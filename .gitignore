@@ -1,0 +1,14 @@
+.vs
+build/
+assets/
+bin/
+lib/
+misc/
+out/
+test/
+src/vendor
+session.vim
+CMakeSettings.json
+tags
+*.py
+*.ini
