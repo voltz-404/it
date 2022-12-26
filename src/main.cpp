@@ -1,11 +1,16 @@
 #include <stdio.h>
 #include <string>
+#include <sstream>
 #include <iostream>
 #include <vector>
+#include <filesystem>
+#include <fstream>
 
 #include <SDL.h>
 #include <SDL_mixer.h>
 #include <SDL_ttf.h>
+
+#include <pybind11/embed.h>
 
 #undef main
 #undef wmain
@@ -14,13 +19,14 @@
 #define SCREEN_HEIGHT 720
 
 
-#define ENUM(x) #x
-
 SDL_Renderer* renderer = nullptr;
 TTF_Font* font = nullptr;
 
 void drawText(const char* text, int font_size, int x, int y, uint32_t color)
 {
+    if (std::string(text).size() < 1)
+        return;
+
     uint8_t red = color >> 16 & 0xff, green = color >> 8 & 0xff, blue = color & 0xff;
     SDL_Color text_color      = { red, green, blue, 0xff }; 
     SDL_Surface* text_surface = nullptr; 
@@ -58,7 +64,129 @@ void drawCursor(int x, int y, int w, int h, uint32_t color)
     SDL_Color cursor_color = hexColorToSDLcolor(color);
     SDL_Rect cursor_rect = { x, y, w, h };
     SDL_SetRenderDrawColor(renderer, cursor_color.r, cursor_color.g, cursor_color.b, 0xff);
-    SDL_RenderDrawRect(renderer, &cursor_rect);
+    SDL_RenderDrawLine(renderer, x, y, x, y + h);
+    // SDL_RenderDrawRect(renderer, &cursor_rect);
+}
+
+enum State
+{
+    EDITOR,
+    OPEN_FILE,
+};
+
+class FileExplorer
+{
+public:
+    FileExplorer()
+    : m_items()
+    , m_selected(0)
+    , m_cursor_pos(0)
+    {
+        setPath("."); 
+    }
+
+    void setPath(const std::string& path)
+    {
+        m_items.clear();
+        m_cursor_pos = 0;
+        for (const auto & entry : std::filesystem::directory_iterator(path))
+        {
+            m_items.emplace_back(entry.path().string());
+        }
+    }
+
+    std::string getSelectedItem()
+    {
+        return m_items.at(m_cursor_pos);
+    }
+
+    void moveCursorUp()
+    {
+        if (m_cursor_pos >= 1)
+            m_cursor_pos -= 1;
+    }
+    
+    void moveCursorDown()
+    {
+        if (m_cursor_pos + 1 < m_items.size())
+            m_cursor_pos += 1;
+    }
+
+    void draw()
+    {
+        int i = 0; 
+        int h = 0;
+        TTF_SizeText(font, "A", nullptr, &h);
+        
+        for (const std::string& item : m_items)
+        {
+            SDL_Rect bg_rect = { 0, h * m_cursor_pos, 300, h };
+            SDL_SetRenderDrawColor(renderer, 0x30, 0x30, 0x30, 0x10);
+            SDL_RenderFillRect(renderer, &bg_rect);
+
+            drawText(item.c_str(), 18, 0, h * i, 0xffffff);
+            i++;
+        }
+
+    }
+private:
+    int m_selected;
+    int m_cursor_pos;
+    std::vector<std::string> m_items;
+};
+
+std::vector<std::string> openFile(const std::string& path)
+{
+    std::vector<std::string> buffer;  
+
+    std::ifstream file(path);
+    std::string line;
+    while (getline(file, line))
+    {
+        buffer.emplace_back(line);
+    }
+
+    return buffer;
+}
+
+void drawFileExplorer(const std::string& path, int selected)
+{
+    std::vector<std::string> items;
+
+    {
+        int i = 0; 
+        int h = 0;
+        TTF_SizeText(font, "A", nullptr, &h);
+        
+        for (const auto & entry : std::filesystem::directory_iterator(path))
+        {
+            items.emplace_back(entry.path().string());
+
+            SDL_Rect bg_rect = { 0, h * selected, 300, h };
+            SDL_SetRenderDrawColor(renderer, 0x30, 0x30, 0x30, 0x10);
+            SDL_RenderFillRect(renderer, &bg_rect);
+
+            drawText(entry.path().string().c_str(), 18, 0, h * i, 0xFF8F40);
+            i++;
+        }
+    }
+
+}
+
+void moveCursorRight(int *cursor_x, int *cursor_row, int cursor_w)
+{
+    *cursor_x = *cursor_row * cursor_w; 
+    *cursor_row += 1;
+}
+
+void drawTextField(const std::vector<std::string>& buffer, int start_offset, int end_offset, int cursor_h)
+{
+    start_offset = start_offset <= 0 ? 0 : start_offset;
+    end_offset   = start_offset + end_offset > buffer.size() ? buffer.size() : start_offset + end_offset;
+    for (int i = start_offset, j = 0; i < end_offset; i++, j++) 
+    {
+        drawText(buffer[i].c_str(), 18, 0.f, j * cursor_h, 0xFFFFFF);
+    }
 }
 
 int main(int, char**)
@@ -82,7 +210,9 @@ int main(int, char**)
         return 0;
     }
 
-    font = TTF_OpenFont("./assets/fonts/liberation-mono.ttf", 18);
+    SDL_RenderSetLogicalSize(renderer, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+    font = TTF_OpenFont("./assets/fonts/liberation-mono.ttf", 16);
     if (font == nullptr)
     {
         printf("%s\n", TTF_GetError());
@@ -92,12 +222,26 @@ int main(int, char**)
         return -1;
     }
 
+    // Pybind11
+    pybind11::scoped_interpreter guard{};
+    pybind11::exec(R"(print("Hello world"))");
+    // ------------------------------------------------
+
     int cursor_row = 1, cursor_col = 1;
     int cursor_x = 0, cursor_y = 0, cursor_w = 0, cursor_h = 0;
     TTF_SizeText(font, "A", &cursor_w, &cursor_h);
 
-    std::vector<std::string> test_text = {"Lorem ipsum dolor sit amet, concectetur adipiscing elit.", "\n", "Praesent elementum semper tellus ac tincidunt.", "Suspendisse sit amet mauris vel justo lacinia gravida"};
+    std::string filename = "./blank.cpp";
+
+    State state = State::EDITOR;
+    int selected = 0;
+    FileExplorer file_explorer;
+    int scren_max_cols = SCREEN_HEIGHT / cursor_h;
+    int scren_max_rows = SCREEN_WIDTH / cursor_w;
+
+    std::vector<std::string> buffer = openFile(filename.c_str());
     std::string status_line = "row: " + std::to_string(cursor_row) + " | col: " + std::to_string(cursor_row);
+
 
     bool done = false;
     while (!done)
@@ -113,12 +257,62 @@ int main(int, char**)
             if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)
                 done = true;
 
+
+            SDL_StartTextInput();
+            if (event.type == SDL_TEXTINPUT)
+            {
+                if (buffer.size() == 0)
+                {
+                    buffer.emplace_back(event.text.text);
+                } else {
+                    buffer.at(cursor_col - 1).insert(cursor_row - 1, event.text.text); 
+                }
+
+                moveCursorRight(&cursor_x, &cursor_row, cursor_w);
+            }
+            if (event.type == SDL_TEXTEDITING)
+            {
+                // printf("%s\n", event.text.text);
+            }
+
+
             if(event.type == SDL_KEYDOWN)
             {
                 switch(event.key.keysym.sym)
                 {
+                    case SDLK_F10:
+                        state = state == EDITOR ? OPEN_FILE : EDITOR;
+                        break;
+                    case SDLK_F2:
+                    {
+                        std::string item = file_explorer.getSelectedItem();
+                        std::stringstream file_content;
+                        for (const std::string& line : buffer)
+                            file_content << line << "\n";
+
+
+                        std::ofstream file(filename);
+                        if (file.is_open())
+                        {
+                            file << file_content.str();
+                            puts("file saved");
+                        }
+                    }
+                        break;
                     case SDLK_UP: 
-                        if (cursor_y >= cursor_h)
+                        if (state == OPEN_FILE)
+                        {
+                            file_explorer.moveCursorUp(); 
+                            break;
+                        }
+                        if (cursor_col > scren_max_cols)
+                        {
+                            cursor_row = 1;
+                            cursor_x = 0;
+
+                            cursor_col -= 1;
+                        }
+                        if (cursor_col > 1 && cursor_col <= scren_max_cols)
                         {
                             cursor_row = 1;
                             cursor_x = 0;
@@ -127,17 +321,70 @@ int main(int, char**)
                             cursor_y -= cursor_h;
                         }
                         break;
+                    case SDLK_KP_ENTER:
+                    case SDLK_RETURN:
+                        if (state == OPEN_FILE)
+                        {
+                            std::string item = file_explorer.getSelectedItem();
+                            if (std::filesystem::is_directory(std::filesystem::path(item)))
+                            {
+                                file_explorer.setPath(item);
+                            } else
+                            {
+                                cursor_row = 1;
+                                cursor_x = 0;
+
+                                cursor_col = 1;
+                                cursor_y = 0;
+
+                                buffer = openFile(item);
+                                filename = item;
+                                state = EDITOR;
+                            }
+
+                            // printf("%s\n", std::filesystem::is_directory(std::filesystem::path(file_explorer.getSelectedItem())));
+                            break;
+                        }
+                        if (buffer.size() >= 1 && buffer[cursor_col - 1][cursor_row - 1] != '\n')
+                        {
+                            std::string new_line = buffer.at(cursor_col - 1).substr(cursor_row - 1);
+                            buffer.at(cursor_col - 1).insert(cursor_row - 1, "\n"); 
+                            // delete the rest of the line after the current cursor_row position
+                            buffer.at(cursor_col - 1).erase(cursor_row - 1);
+
+                            // add a new line to the buffer with the rest of the line that was remove from last buffer line
+                            buffer.insert(buffer.begin() + (cursor_col), new_line);
+                        } else
+                        {
+                            buffer.insert(buffer.begin() + cursor_col, "\n");
+                        }
                     case SDLK_DOWN: 
-                        if (cursor_y + cursor_h <= SCREEN_HEIGHT - cursor_h && cursor_col < test_text.size())
+                        if (state == OPEN_FILE)
+                        {
+                            file_explorer.moveCursorDown();
+                            break;
+                        }; 
+                        if (cursor_col < buffer.size())
                         {
                             cursor_row = 1;
                             cursor_x = 0;
 
                             cursor_col += 1;
-                            cursor_y += cursor_h;
+                            if (cursor_y + cursor_h < SCREEN_HEIGHT - cursor_h)
+                                cursor_y += cursor_h;
                         }
-                        ; 
                         break;
+                    case SDLK_BACKSPACE:
+                        if (buffer.size() >= 1 && cursor_row > 1)
+                        {
+                            buffer.at(cursor_col - 1).erase(cursor_row - 2, 1);
+                        } else if (cursor_col > 1)
+                        {
+                            // buffer.at(cursor_col - 2).append("hello"); 
+                            buffer.erase(buffer.begin() + (cursor_col - 1));
+                            cursor_col -= 1;
+                            cursor_y -= cursor_h;
+                        }
                     case SDLK_LEFT: 
                         if (cursor_x >= cursor_w)
                         {
@@ -146,38 +393,57 @@ int main(int, char**)
                         } 
                         break;
                     case SDLK_RIGHT: 
-                        if (cursor_x + cursor_w < SCREEN_WIDTH - cursor_w && cursor_row + 1 <= test_text[cursor_col - 1].size())
+                        if (cursor_x + cursor_w < SCREEN_WIDTH - cursor_w && cursor_row <= buffer[cursor_col - 1].size())
                         { 
-                            // printf("this column letter size: %llu\n", test_text[cursor_col - 1].size() - 1);
-                            cursor_row += 1;
-                            cursor_x += cursor_w; 
+                            // printf("this column letter size: %llu\n", buffer[cursor_col - 1].size() - 1);
+                            moveCursorRight(&cursor_x, &cursor_row, cursor_w);
+                            // cursor_x = cursor_row * cursor_w; 
+                            // cursor_row += 1;
+                        }
+                        break;
+                    case SDLK_TAB: 
+                        buffer.at(cursor_col - 1).insert(cursor_row - 1, "    ");
+                        for (int i = 0; i < 4; i++) {
+                            moveCursorRight(&cursor_x, &cursor_row, cursor_w);
                         }
                         break;
                     default:
-                        break; 
+                        break;
                 }
             }
         }
 
-        // TODO: unsigned char takes 2 bytes space, messing up with cursor_row accurace and out of bounds cursor_row position
-        status_line = "row: " + std::to_string(cursor_row) + "/" + std::to_string(test_text[cursor_col - 1].size()) +  " | col: " + std::to_string(cursor_col) + " ch = " + test_text[cursor_col - 1][cursor_row - 1];
+        // TODO: unsigned char takes 2 bytes space, messing up with cursor_row accuracy and out of bounds cursor_row position
+        status_line = "row: " + std::to_string(cursor_row) + " | col: " + std::to_string(cursor_col) + "/" + std::to_string(scren_max_cols);
 
         // Render
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
         SDL_SetRenderDrawColor(renderer, 0x15, 0x15, 0x15, 0xff);
         SDL_RenderClear(renderer);
 
-        // Draws text to the screen line by line
-        for (int i = 0; i < test_text.size(); i++)
+        switch (state)
         {
-            drawText(test_text[i].c_str(), 18, 0.f, i * cursor_h, 0xffffff);
+            case State::EDITOR:
+            {
+                // Draws text to the screen line by line
+                drawTextField(buffer, cursor_col - scren_max_cols, scren_max_cols, cursor_h);
+                // int status_w = 0, status_h = 0;
+                // TTF_SizeText(font, status_line.c_str(), &status_w, &status_h);
+                int status_width = 0;
+                TTF_SizeText(font, status_line.c_str(), &status_width, NULL);
+                drawText(status_line.c_str(), 18, SCREEN_WIDTH - status_width, SCREEN_HEIGHT - cursor_h, 0x00ff00);
+                drawCursor(cursor_x, cursor_y, cursor_w, cursor_h, 0xFF8F40);
+                break;
+            }
+            case State::OPEN_FILE:
+            {
+                // drawFileExplorer("./", selected);
+                file_explorer.draw();
+                break;
+            }
+            default: break;
         }
 
-        // int status_w = 0, status_h = 0;
-        // TTF_SizeText(font, status_line.c_str(), &status_w, &status_h);
-        drawText(status_line.c_str(), 18, SCREEN_WIDTH - 300, SCREEN_HEIGHT - cursor_h, 0x00ff00);
-
-        drawCursor(cursor_x, cursor_y, cursor_w, cursor_h, 0x0000ff);
 
         SDL_RenderPresent(renderer);
     }
