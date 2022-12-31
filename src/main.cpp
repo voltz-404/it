@@ -12,6 +12,8 @@
 
 #include <pybind11/embed.h>
 
+#include "parser.h"
+
 #undef main
 #undef wmain
 
@@ -21,6 +23,67 @@
 
 SDL_Renderer* renderer = nullptr;
 TTF_Font* font = nullptr;
+
+struct Texture
+{
+    Texture(SDL_Texture* _texture, SDL_Rect _rect)
+    {
+        texture = _texture;
+        rect    = _rect;
+    }
+
+    ~Texture()
+    {
+        SDL_DestroyTexture(texture);
+    }
+
+    SDL_Texture* texture;
+    SDL_Rect rect;
+};
+
+
+Texture drawTextOpt(const char* text, int font_size, int x, int y, uint32_t color)
+{
+    if (std::string(text).size() < 1)
+        return Texture(nullptr, (SDL_Rect) { 0, 0, 0, 0 });
+
+    uint8_t red = color >> 16 & 0xff, green = color >> 8 & 0xff, blue = color & 0xff;
+    SDL_Color text_color      = { red, green, blue, 0xff }; 
+    SDL_Surface* text_surface = nullptr; 
+    SDL_Texture* text_texture = nullptr;
+
+    if ((text_surface =  TTF_RenderUTF8_Blended_Wrapped(font, text, text_color, 0)) == nullptr)
+    {
+        printf("Could not creaetd surface from font: %s\n", TTF_GetError());
+        return Texture(nullptr, (SDL_Rect) { 0, 0, 0, 0 });
+    }
+    if ((text_texture = SDL_CreateTextureFromSurface(renderer, text_surface)) == nullptr)
+    {
+        printf("Could not creaetd texture from surface: %s\n", TTF_GetError());
+        SDL_FreeSurface(text_surface);
+        return Texture(nullptr, (SDL_Rect) { 0, 0, 0, 0 });
+    }
+
+    SDL_Rect text_rect = { x, y, text_surface->w, text_surface->h };
+    SDL_FreeSurface(text_surface);
+
+    return Texture(text_texture, text_rect);
+}
+
+void setRendererTarget(SDL_Texture* texture)
+{
+    SDL_SetRenderTarget(renderer, texture);
+}
+
+void copyTexture(Texture src)
+{
+    SDL_RenderCopy(renderer, src.texture, nullptr, &src.rect);
+}
+
+void setRendererDeafault()
+{
+    SDL_SetRenderTarget(renderer, nullptr);
+}
 
 void drawText(const char* text, int font_size, int x, int y, uint32_t color)
 {
@@ -50,6 +113,13 @@ void drawText(const char* text, int font_size, int x, int y, uint32_t color)
     SDL_FreeSurface(text_surface);
     SDL_DestroyTexture(text_texture);
 }
+
+struct ColorScheme
+{
+    uint32_t keyword = 0xff0000;
+    uint32_t symbols = 0x00ff00;
+    uint32_t numbers = 0x0000ff;
+};
 
 SDL_Color hexColorToSDLcolor(uint32_t color)
 {
@@ -179,14 +249,85 @@ void moveCursorRight(int *cursor_x, int *cursor_row, int cursor_w)
     *cursor_row += 1;
 }
 
-void drawTextField(const std::vector<std::string>& buffer, int start_offset, int end_offset, int cursor_h)
+void drawTextField(const std::vector<std::string>& buffer, int start_offset, int end_offset, int cursor_h, Theme theme)
 {
     start_offset = start_offset <= 0 ? 0 : start_offset;
     end_offset   = start_offset + end_offset > buffer.size() ? buffer.size() : start_offset + end_offset;
     for (int i = start_offset, j = 0; i < end_offset; i++, j++) 
     {
-        drawText(buffer[i].c_str(), 18, 0.f, j * cursor_h, 0xFFFFFF);
+        // drawText(buffer[i].c_str(), 18, 0.f, j * cursor_h, theme.string_);
+        drawLine(buffer[i], 0, j, theme);
     }
+}
+
+
+void drawLine(const std::string& line, int x, int y, Theme theme)
+{
+    std::vector<Token> tokens = parser(line);
+
+    std::vector<std::string> keywords = { "int", "string", "return", "void", "char", "uint_32", "if", "else", "while", "switch", "include", "const" };
+
+    SDL_Rect rect;
+
+    int line_w = 0, line_h = 0;
+    TTF_SizeText(font, line.c_str(), &line_w, &line_h);
+    SDL_Texture* texture = SDL_CreateTexture(renderer,
+                                SDL_PIXELFORMAT_ARGB8888,
+                                SDL_TEXTUREACCESS_STREAMING,
+                                line_w, line_h);
+
+    Texture texture_line(texture, rect);
+
+    int i = 0;
+    bool string_start = false;
+    for (const Token& token : tokens)
+    {
+        uint32_t color;
+        int width = 0, height = 0;
+        TTF_SizeText(font, token.str.c_str(), &width, &height);
+
+        if (token.str == "\"")
+        {
+            color = theme.string_;
+            string_start = !string_start;
+        }
+        else if (token.str == "#")
+            color = theme.namepce;
+        else if (std::find(keywords.begin(), keywords.end(), token.str) != keywords.end())
+            color = theme.keyword;
+        else if (token.type == Token::Type::NUM)
+            color = theme.numbers;
+        else if (token.str == "std")
+            color = theme.namepce;
+        else 
+            color = theme.symbols;
+
+        if (string_start)
+        {
+            color = theme.string_;
+        }
+
+            
+        if (!string_start && token.str == "\"")
+        {
+            color = theme.string_;
+        }
+
+
+        // Texture word = drawTextOpt(token.str.c_str(), 18, i, y * height, color);
+        // setRendererTarget(texture_line.texture);
+        // copyTexture(word);
+        
+        drawText(token.str.c_str(), 18, i, y * height, color);
+        i += width;
+
+        // texture_line.rect.w += width;
+        // printf("'%s' -> %d\n", token.str.c_str(), token.type);
+    }
+
+    // setRendererDeafault();
+    // texture_line.rect.w = line_w;
+    // copyTexture(texture_line);
 }
 
 int main(int, char**)
@@ -223,9 +364,16 @@ int main(int, char**)
     }
 
     // Pybind11
-    pybind11::scoped_interpreter guard{};
-    pybind11::exec(R"(print("Hello world"))");
+    // pybind11::scoped_interpreter guard{};
+    // pybind11::exec(R"(print("Hello world"))");
     // ------------------------------------------------
+    //
+    Theme theme;
+    theme.keyword = 0x689d6a;
+    theme.symbols = 0xebdbb2;
+    theme.numbers = 0xb16286;
+    theme.namepce = 0xfe8019;
+    theme.string_ = 0x98971a;
 
     int cursor_row = 1, cursor_col = 1;
     int cursor_x = 0, cursor_y = 0, cursor_w = 0, cursor_h = 0;
@@ -414,24 +562,48 @@ int main(int, char**)
         }
 
         // TODO: unsigned char takes 2 bytes space, messing up with cursor_row accuracy and out of bounds cursor_row position
-        status_line = "row: " + std::to_string(cursor_row) + " | col: " + std::to_string(cursor_col) + "/" + std::to_string(scren_max_cols);
+        status_line = "row: " + std::to_string(cursor_row) + " | col: " + std::to_string(cursor_col);
 
         // Render
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-        SDL_SetRenderDrawColor(renderer, 0x15, 0x15, 0x15, 0xff);
+        SDL_SetRenderDrawColor(renderer, 0x1d, 0x20, 0x21, 0xff);
         SDL_RenderClear(renderer);
 
         switch (state)
         {
             case State::EDITOR:
             {
-                // Draws text to the screen line by line
-                drawTextField(buffer, cursor_col - scren_max_cols, scren_max_cols, cursor_h);
-                // int status_w = 0, status_h = 0;
-                // TTF_SizeText(font, status_line.c_str(), &status_w, &status_h);
+                // Texture text1 = drawTextOpt("Hello", 18, 0, 0, 0xffff00);
+                // Texture text2 = drawTextOpt(" World", 18, text1.rect.w, 0, 0xffff00);
+
+                // int w = 0, h = 0;
+                // SDL_QueryTexture(text1.texture, nullptr, nullptr, &w, &h);
+                // printf("b4 w = %d, h = %d\n", w, h);
+
+                // setRendererTarget(text1.texture);
+                // copyTexture(text2);
+                // setRendererDeafault();
+
+
+                // copyTexture(text1);
+                // SDL_QueryTexture(text1.texture, nullptr, nullptr, &w, &h);
+                // printf("af w = %d, h = %d\n", w, h);
+
+                // drawLine("int main(int argc)", 0, 0, theme);
+
+                for (int i = 0; i < buffer.size(); i++)
+                {
+                   drawLine(buffer[i], 0, i, theme);
+                }
+
+                // // Draws text to the screen line by line
+                // drawTextField(buffer, cursor_col - scren_max_cols, scren_max_cols, cursor_h, theme);
+                // // int status_w = 0, status_h = 0;
+                // // TTF_SizeText(font, status_line.c_str(), &status_w, &status_h);
+                
                 int status_width = 0;
                 TTF_SizeText(font, status_line.c_str(), &status_width, NULL);
-                drawText(status_line.c_str(), 18, SCREEN_WIDTH - status_width, SCREEN_HEIGHT - cursor_h, 0x00ff00);
+                drawText(status_line.c_str(), 18, SCREEN_WIDTH - status_width, SCREEN_HEIGHT - cursor_h, 0xfb4934);
                 drawCursor(cursor_x, cursor_y, cursor_w, cursor_h, 0xFF8F40);
                 break;
             }

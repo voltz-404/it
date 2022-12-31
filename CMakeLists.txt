@@ -29,6 +29,7 @@ include_directories(${PROJECT_NAME} ${SDL2_INCLUDE_DIRS})
 # find_package(pybind11 CONFIG REQUIRED)
 
 set(SRC
+    src/parser.cpp
     src/main.cpp)
 
 add_executable(${PROJECT_NAME} ${IMG_FILES} ${SRC})

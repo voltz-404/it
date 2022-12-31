@@ -11,6 +11,5 @@ src/vendor
 session.vim
 CMakeSettings.json
 tags
-*.cpp
 *.py
 *.ini
