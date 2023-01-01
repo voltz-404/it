@@ -10,9 +10,10 @@
 #include <SDL_mixer.h>
 #include <SDL_ttf.h>
 
-#include <pybind11/embed.h>
+//#include <pybind11/embed.h>
 
 #include "parser.h"
+#include "text.h"
 
 #undef main
 #undef wmain
@@ -23,107 +24,6 @@
 
 SDL_Renderer* renderer = nullptr;
 TTF_Font* font = nullptr;
-
-struct Texture
-{
-    Texture(SDL_Texture* _texture, SDL_Surface* _surface, SDL_Rect _rect)
-    {
-        texture = _texture;
-        surface = _surface;
-        rect    = _rect;
-    }
-
-    ~Texture()
-    {
-        SDL_DestroyTexture(texture);
-        SDL_FreeSurface(surface);
-    }
-
-    SDL_Texture* texture;
-    SDL_Surface* surface;
-    SDL_Rect rect;
-};
-
-
-Texture drawTextOpt(const char* text, int font_size, int x, int y, uint32_t color)
-{
-    if (std::string(text).size() < 1)
-        return Texture(nullptr, nullptr, (SDL_Rect) { 0, 0, 0, 0 });
-
-    uint8_t red = color >> 16 & 0xff, green = color >> 8 & 0xff, blue = color & 0xff;
-    SDL_Color text_color      = { red, green, blue, 0xff }; 
-    SDL_Surface* text_surface = nullptr; 
-    SDL_Texture* text_texture = nullptr;
-
-    if ((text_surface =  TTF_RenderUTF8_Blended_Wrapped(font, text, text_color, 0)) == nullptr)
-    {
-        printf("Could not creaetd surface from font: %s\n", TTF_GetError());
-        return Texture(nullptr, nullptr, (SDL_Rect) { 0, 0, 0, 0 });
-    }
-    // if ((text_texture = SDL_CreateTextureFromSurface(renderer, text_surface)) == nullptr)
-    // {
-    //     printf("Could not creaetd texture from surface: %s\n", TTF_GetError());
-    //     SDL_FreeSurface(text_surface);
-        // return Texture(nullptr, nullptr, (SDL_Rect) { 0, 0, 0, 0 });
-    // }
-
-    SDL_Rect text_rect = { x, y, text_surface->w, text_surface->h };
-    // SDL_FreeSurface(text_surface);
-
-    return Texture(nullptr, text_surface, text_rect);
-}
-
-void setRendererTarget(SDL_Texture* texture)
-{
-    SDL_SetRenderTarget(renderer, texture);
-}
-
-void copyTexture(Texture src)
-{
-    SDL_RenderCopy(renderer, src.texture, nullptr, &src.rect);
-}
-
-void setRendererDeafault()
-{
-    SDL_SetRenderTarget(renderer, nullptr);
-}
-
-void drawText(const char* text, int font_size, int x, int y, uint32_t color)
-{
-    if (std::string(text).size() < 1)
-        return;
-
-    uint8_t red = color >> 16 & 0xff, green = color >> 8 & 0xff, blue = color & 0xff;
-    SDL_Color text_color      = { red, green, blue, 0xff }; 
-    SDL_Surface* text_surface = nullptr; 
-    SDL_Texture* text_texture = nullptr;
-
-    if ((text_surface =  TTF_RenderUTF8_Blended_Wrapped(font, text, text_color, 0)) == nullptr)
-    {
-        printf("Could not creaetd surface from font: %s\n", TTF_GetError());
-        return;
-    }
-    if ((text_texture = SDL_CreateTextureFromSurface(renderer, text_surface)) == nullptr)
-    {
-        printf("Could not creaetd texture from surface: %s\n", TTF_GetError());
-        SDL_FreeSurface(text_surface);
-        return;
-    }
-
-    SDL_Rect text_rect       = { x, y, text_surface->w, text_surface->h };
-    SDL_RenderCopy(renderer, text_texture, nullptr, &text_rect);
-
-    SDL_FreeSurface(text_surface);
-    SDL_DestroyTexture(text_texture);
-}
-
-struct ColorScheme
-{
-    uint32_t keyword = 0xff0000;
-    uint32_t symbols = 0x00ff00;
-    uint32_t numbers = 0x0000ff;
-};
-
 SDL_Color hexColorToSDLcolor(uint32_t color)
 {
     uint8_t red = color >> 16 & 0xff, green = color >> 8 & 0xff, blue = color & 0xff;
@@ -197,7 +97,9 @@ public:
             SDL_SetRenderDrawColor(renderer, 0x30, 0x30, 0x30, 0x10);
             SDL_RenderFillRect(renderer, &bg_rect);
 
-            drawText(item.c_str(), 18, 0, h * i, 0xffffff);
+            Text item_text(item.c_str(), 0, h * i, font, 0xffffff);
+            item_text.makeTexture(renderer);
+            item_text.draw(renderer);
             i++;
         }
 
@@ -222,30 +124,6 @@ std::vector<std::string> openFile(const std::string& path)
     return buffer;
 }
 
-void drawFileExplorer(const std::string& path, int selected)
-{
-    std::vector<std::string> items;
-
-    {
-        int i = 0; 
-        int h = 0;
-        TTF_SizeText(font, "A", nullptr, &h);
-        
-        for (const auto & entry : std::filesystem::directory_iterator(path))
-        {
-            items.emplace_back(entry.path().string());
-
-            SDL_Rect bg_rect = { 0, h * selected, 300, h };
-            SDL_SetRenderDrawColor(renderer, 0x30, 0x30, 0x30, 0x10);
-            SDL_RenderFillRect(renderer, &bg_rect);
-
-            drawText(entry.path().string().c_str(), 18, 0, h * i, 0xFF8F40);
-            i++;
-        }
-    }
-
-}
-
 void moveCursorRight(int *cursor_x, int *cursor_row, int cursor_w)
 {
     *cursor_x = *cursor_row * cursor_w; 
@@ -255,11 +133,10 @@ void moveCursorRight(int *cursor_x, int *cursor_row, int cursor_w)
 void drawTextField(const std::vector<std::string>& buffer, int start_offset, int end_offset, int cursor_h, Theme theme)
 {
     start_offset = start_offset <= 0 ? 0 : start_offset;
-    end_offset   = start_offset + end_offset > buffer.size() ? buffer.size() : start_offset + end_offset;
+    end_offset   = start_offset + end_offset > (int)buffer.size() ? (int)buffer.size() : start_offset + end_offset;
     for (int i = start_offset, j = 0; i < end_offset; i++, j++) 
     {
-        // drawText(buffer[i].c_str(), 18, 0.f, j * cursor_h, theme.string_);
-        drawLine(buffer[i], 0, j, theme);
+        drawLine(buffer[i], 0, j * cursor_h, theme);
     }
 }
 
@@ -269,15 +146,16 @@ void drawLine(const std::string& line, int x, int y, Theme theme)
     if (line.size() < 1) return;
     std::vector<Token> tokens = parser(line);
 
-    std::vector<std::string> keywords = { "int", "string", "return", "void", "char", "uint_32", "if", "else", "while", "switch", "include", "const" };
+    std::vector<std::string> keywords = { "int", "string", "return", "void", "char", "uint_32", "if", "else", "while", "for" ,"switch", "include", "const", "def" };
 
     int line_w = 0, line_h = 0;
     TTF_SizeText(font, line.c_str(), &line_w, &line_h);
 
     line_w += 2;
-    SDL_Surface* surface = SDL_CreateRGBSurface(0, line_w, line_h, 32, 0, 0, 0, 0);
-    SDL_SetSurfaceBlendMode(surface, SDL_BLENDMODE_BLEND);
-    int i = 0;
+
+    Text text(font, x, y);
+    text.reserveSurface(line_w, line_h);
+
     bool string_start = false;
     for (const Token& token : tokens)
     {
@@ -312,41 +190,21 @@ void drawLine(const std::string& line, int x, int y, Theme theme)
             color = theme.string_;
         }
 
+        text.append(token.str.c_str(), color);
 
-        // Texture word = drawTextOpt(token.str.c_str(), 18, i, y * height, color);
-        // setRendererTarget(texture_line.texture);
-        // copyTexture(word);
-        
-        // drawText(token.str.c_str(), 18, i, y * height, color);
-        Texture word = drawTextOpt(token.str.c_str(), 18, 0, 0, color);
-        SDL_Rect rect = { i, 0, 0, 0 };
-        SDL_BlitSurface(word.surface, &word.rect, surface, &rect);
-        i += width;
-
-        // texture_line.rect.w += width;
-        // printf("'%s' -> %d\n", token.str.c_str(), token.type);
     }
-    Uint32 colorkey = SDL_MapRGB(surface->format, 0x0, 0x0, 0x0);
-    SDL_SetColorKey(surface, SDL_TRUE, colorkey);
-
-    SDL_Texture* texture = nullptr;
-    if ((texture = SDL_CreateTextureFromSurface(renderer, surface)) == nullptr)
-    {
-        printf("Could not creaetd texture from surface: %s\n", TTF_GetError());
-    }
-
-    SDL_Rect rect = { x, y * line_h, line_w, line_h };
-    SDL_RenderCopy(renderer, texture, nullptr, &rect);
-
-    SDL_FreeSurface(surface);
-    SDL_DestroyTexture(texture);
-    // setRendererDeafault();
-    // texture_line.rect.w = line_w;
-    // copyTexture(texture_line);
+    text.makeTexture(renderer);
+    text.draw(renderer);
 }
 
-int main(int, char**)
+int main(int argc, char** argv)
 {
+    std::string filename;
+    if (argc > 1)
+        filename = argv[1];
+    else
+        filename = "./blank.cpp";
+
     if (SDL_Init(SDL_INIT_EVERYTHING) != 0 || TTF_Init() != 0)
     {
         printf("Error: %s\n TTF Error: %s\n", SDL_GetError(), TTF_GetError());
@@ -394,7 +252,6 @@ int main(int, char**)
     int cursor_x = 0, cursor_y = 0, cursor_w = 0, cursor_h = 0;
     TTF_SizeText(font, "A", &cursor_w, &cursor_h);
 
-    std::string filename = "./blank.cpp";
 
     State state = State::EDITOR;
     int selected = 0;
@@ -558,10 +415,8 @@ int main(int, char**)
                     case SDLK_RIGHT: 
                         if (cursor_x + cursor_w < SCREEN_WIDTH - cursor_w && cursor_row <= buffer[cursor_col - 1].size())
                         { 
-                            // printf("this column letter size: %llu\n", buffer[cursor_col - 1].size() - 1);
                             moveCursorRight(&cursor_x, &cursor_row, cursor_w);
-                            // cursor_x = cursor_row * cursor_w; 
-                            // cursor_row += 1;
+
                         }
                         break;
                     case SDLK_TAB: 
@@ -588,44 +443,19 @@ int main(int, char**)
         {
             case State::EDITOR:
             {
-                // Texture text1 = drawTextOpt("Hello", 18, 0, 0, 0xffff00);
-                // Texture text2 = drawTextOpt(" World", 18, text1.rect.w, 0, 0xffff00);
-
-                // int w = 0, h = 0;
-                // SDL_QueryTexture(text1.texture, nullptr, nullptr, &w, &h);
-                // printf("b4 w = %d, h = %d\n", w, h);
-
-                // setRendererTarget(text1.texture);
-                // copyTexture(text2);
-                // setRendererDeafault();
-
-
-                // copyTexture(text1);
-                // SDL_QueryTexture(text1.texture, nullptr, nullptr, &w, &h);
-                // printf("af w = %d, h = %d\n", w, h);
-
-                // drawLine("int main(int argc)", 0, 0, theme);
-
-                // drawLine("Hello world", 0, 0, theme);
-                // for (int i = 0; i < buffer.size(); i++)
-                // {
-                //    drawLine(buffer[i].c_str(), 0, i, theme);
-                // }
-
-                // // Draws text to the screen line by line
-                drawTextField(buffer, cursor_col - scren_max_cols, scren_max_cols, cursor_h, theme);
-                // // int status_w = 0, status_h = 0;
-                // // TTF_SizeText(font, status_line.c_str(), &status_w, &status_h);
+                 drawTextField(buffer, cursor_col - scren_max_cols, scren_max_cols, cursor_h, theme);
                 
-                int status_width = 0;
-                TTF_SizeText(font, status_line.c_str(), &status_width, NULL);
-                drawText(status_line.c_str(), 18, SCREEN_WIDTH - status_width, SCREEN_HEIGHT - cursor_h, 0xfb4934);
-                drawCursor(cursor_x, cursor_y, cursor_w, cursor_h, 0xFF8F40);
+                 int status_width = 0;
+                 TTF_SizeText(font, status_line.c_str(), &status_width, NULL);
+
+                 Text status_text(status_line, SCREEN_WIDTH - status_width, SCREEN_HEIGHT - cursor_h, font, 0xfb4934);
+                 status_text.makeTexture(renderer);
+                 status_text.draw(renderer);
+                 drawCursor(cursor_x, cursor_y, cursor_w, cursor_h, 0xFF8F40);
                 break;
             }
             case State::OPEN_FILE:
             {
-                // drawFileExplorer("./", selected);
                 file_explorer.draw();
                 break;
             }

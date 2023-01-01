@@ -46,7 +46,7 @@ std::vector<Token> parser(const std::string& line)
                 type = Token::Type::UKN;
             }
         }
-        tokens.push_back((Token){ type, token });
+        tokens.push_back({ type, token });
     }
 
     return tokens;

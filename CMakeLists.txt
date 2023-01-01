@@ -1,14 +1,14 @@
 cmake_minimum_required(VERSION 3.11)
 project(it)
 
-set(CMAKE_BUILD_TYPE Release)
+#set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/bin/$<CONFIG>/)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # set(CMAKE_GENERATOR_PLATFORM x64)
 
 # PYBIND11 setup
-add_subdirectory("extern/pybind11")
+#add_subdirectory("extern/pybind11")
 
 # SDL2 setup -----------------------------------------
 set(SDL2_ROOT "${CMAKE_CURRENT_LIST_DIR}/lib/SDL2")
@@ -25,15 +25,14 @@ string(STRIP "${SDL2_LIBRARIES}" SDL2_LIBRARIES)
 
 include_directories(${PROJECT_NAME} ${SDL2_INCLUDE_DIRS})
 
-# find_package(Python 3.6 COMPONENTS Interpreter Development REQUIRED)
-# find_package(pybind11 CONFIG REQUIRED)
-
 set(SRC
     src/parser.cpp
-    src/main.cpp)
+    src/main.cpp
+    src/text.h
+    src/text.cpp)
 
 add_executable(${PROJECT_NAME} ${IMG_FILES} ${SRC})
 
 set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
-target_link_libraries(${PROJECT_NAME} PRIVATE ${SDL2_LIBRARIES} ${PYTHON_LIBS} pybind11::embed)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${SDL2_LIBRARIES} ${PYTHON_LIBS}) #pybind11::embed)
