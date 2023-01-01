@@ -26,18 +26,21 @@ TTF_Font* font = nullptr;
 
 struct Texture
 {
-    Texture(SDL_Texture* _texture, SDL_Rect _rect)
+    Texture(SDL_Texture* _texture, SDL_Surface* _surface, SDL_Rect _rect)
     {
         texture = _texture;
+        surface = _surface;
         rect    = _rect;
     }
 
     ~Texture()
     {
         SDL_DestroyTexture(texture);
+        SDL_FreeSurface(surface);
     }
 
     SDL_Texture* texture;
+    SDL_Surface* surface;
     SDL_Rect rect;
 };
 
@@ -45,7 +48,7 @@ struct Texture
 Texture drawTextOpt(const char* text, int font_size, int x, int y, uint32_t color)
 {
     if (std::string(text).size() < 1)
-        return Texture(nullptr, (SDL_Rect) { 0, 0, 0, 0 });
+        return Texture(nullptr, nullptr, (SDL_Rect) { 0, 0, 0, 0 });
 
     uint8_t red = color >> 16 & 0xff, green = color >> 8 & 0xff, blue = color & 0xff;
     SDL_Color text_color      = { red, green, blue, 0xff }; 
@@ -55,19 +58,19 @@ Texture drawTextOpt(const char* text, int font_size, int x, int y, uint32_t colo
     if ((text_surface =  TTF_RenderUTF8_Blended_Wrapped(font, text, text_color, 0)) == nullptr)
     {
         printf("Could not creaetd surface from font: %s\n", TTF_GetError());
-        return Texture(nullptr, (SDL_Rect) { 0, 0, 0, 0 });
+        return Texture(nullptr, nullptr, (SDL_Rect) { 0, 0, 0, 0 });
     }
-    if ((text_texture = SDL_CreateTextureFromSurface(renderer, text_surface)) == nullptr)
-    {
-        printf("Could not creaetd texture from surface: %s\n", TTF_GetError());
-        SDL_FreeSurface(text_surface);
-        return Texture(nullptr, (SDL_Rect) { 0, 0, 0, 0 });
-    }
+    // if ((text_texture = SDL_CreateTextureFromSurface(renderer, text_surface)) == nullptr)
+    // {
+    //     printf("Could not creaetd texture from surface: %s\n", TTF_GetError());
+    //     SDL_FreeSurface(text_surface);
+        // return Texture(nullptr, nullptr, (SDL_Rect) { 0, 0, 0, 0 });
+    // }
 
     SDL_Rect text_rect = { x, y, text_surface->w, text_surface->h };
-    SDL_FreeSurface(text_surface);
+    // SDL_FreeSurface(text_surface);
 
-    return Texture(text_texture, text_rect);
+    return Texture(nullptr, text_surface, text_rect);
 }
 
 void setRendererTarget(SDL_Texture* texture)
@@ -263,21 +266,17 @@ void drawTextField(const std::vector<std::string>& buffer, int start_offset, int
 
 void drawLine(const std::string& line, int x, int y, Theme theme)
 {
+    if (line.size() < 1) return;
     std::vector<Token> tokens = parser(line);
 
     std::vector<std::string> keywords = { "int", "string", "return", "void", "char", "uint_32", "if", "else", "while", "switch", "include", "const" };
 
-    SDL_Rect rect;
-
     int line_w = 0, line_h = 0;
     TTF_SizeText(font, line.c_str(), &line_w, &line_h);
-    SDL_Texture* texture = SDL_CreateTexture(renderer,
-                                SDL_PIXELFORMAT_ARGB8888,
-                                SDL_TEXTUREACCESS_STREAMING,
-                                line_w, line_h);
 
-    Texture texture_line(texture, rect);
-
+    line_w += 2;
+    SDL_Surface* surface = SDL_CreateRGBSurface(0, line_w, line_h, 32, 0, 0, 0, 0);
+    SDL_SetSurfaceBlendMode(surface, SDL_BLENDMODE_BLEND);
     int i = 0;
     bool string_start = false;
     for (const Token& token : tokens)
@@ -318,13 +317,29 @@ void drawLine(const std::string& line, int x, int y, Theme theme)
         // setRendererTarget(texture_line.texture);
         // copyTexture(word);
         
-        drawText(token.str.c_str(), 18, i, y * height, color);
+        // drawText(token.str.c_str(), 18, i, y * height, color);
+        Texture word = drawTextOpt(token.str.c_str(), 18, 0, 0, color);
+        SDL_Rect rect = { i, 0, 0, 0 };
+        SDL_BlitSurface(word.surface, &word.rect, surface, &rect);
         i += width;
 
         // texture_line.rect.w += width;
         // printf("'%s' -> %d\n", token.str.c_str(), token.type);
     }
+    Uint32 colorkey = SDL_MapRGB(surface->format, 0x0, 0x0, 0x0);
+    SDL_SetColorKey(surface, SDL_TRUE, colorkey);
 
+    SDL_Texture* texture = nullptr;
+    if ((texture = SDL_CreateTextureFromSurface(renderer, surface)) == nullptr)
+    {
+        printf("Could not creaetd texture from surface: %s\n", TTF_GetError());
+    }
+
+    SDL_Rect rect = { x, y * line_h, line_w, line_h };
+    SDL_RenderCopy(renderer, texture, nullptr, &rect);
+
+    SDL_FreeSurface(surface);
+    SDL_DestroyTexture(texture);
     // setRendererDeafault();
     // texture_line.rect.w = line_w;
     // copyTexture(texture_line);
@@ -591,13 +606,14 @@ int main(int, char**)
 
                 // drawLine("int main(int argc)", 0, 0, theme);
 
-                for (int i = 0; i < buffer.size(); i++)
-                {
-                   drawLine(buffer[i], 0, i, theme);
-                }
+                // drawLine("Hello world", 0, 0, theme);
+                // for (int i = 0; i < buffer.size(); i++)
+                // {
+                //    drawLine(buffer[i].c_str(), 0, i, theme);
+                // }
 
                 // // Draws text to the screen line by line
-                // drawTextField(buffer, cursor_col - scren_max_cols, scren_max_cols, cursor_h, theme);
+                drawTextField(buffer, cursor_col - scren_max_cols, scren_max_cols, cursor_h, theme);
                 // // int status_w = 0, status_h = 0;
                 // // TTF_SizeText(font, status_line.c_str(), &status_w, &status_h);
                 
