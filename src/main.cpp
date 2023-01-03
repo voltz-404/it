@@ -14,6 +14,7 @@
 
 #include "parser.h"
 #include "text.h"
+#include "cursor.h"
 
 #undef main
 #undef wmain
@@ -146,7 +147,7 @@ void drawLine(const std::string& line, int x, int y, Theme theme)
     if (line.size() < 1) return;
     std::vector<Token> tokens = parser(line);
 
-    std::vector<std::string> keywords = { "int", "string", "return", "void", "char", "uint_32", "if", "else", "while", "for" ,"switch", "include", "const", "def" };
+    std::vector<std::string> keywords = { "int", "string", "return", "void", "char", "uint_32", "if", "else", "while", "for" ,"switch", "include", "const", "def", "import"};
 
     int line_w = 0, line_h = 0;
     TTF_SizeText(font, line.c_str(), &line_w, &line_h);
@@ -259,9 +260,12 @@ int main(int argc, char** argv)
     int scren_max_cols = SCREEN_HEIGHT / cursor_h;
     int scren_max_rows = SCREEN_WIDTH / cursor_w;
 
+    int begin_offset = 0, end_offset = scren_max_cols - 1;
+
+    Cursor cursor(cursor_w, cursor_h, scren_max_rows, scren_max_cols);
+
     std::vector<std::string> buffer = openFile(filename.c_str());
     std::string status_line = "row: " + std::to_string(cursor_row) + " | col: " + std::to_string(cursor_row);
-
 
     bool done = false;
     while (!done)
@@ -285,10 +289,10 @@ int main(int argc, char** argv)
                 {
                     buffer.emplace_back(event.text.text);
                 } else {
-                    buffer.at(cursor_col - 1).insert(cursor_row - 1, event.text.text); 
+                    buffer.at(cursor.col() - 1).insert(cursor.row() - 1, event.text.text);
                 }
 
-                moveCursorRight(&cursor_x, &cursor_row, cursor_w);
+                cursor.moveRight(buffer[cursor.col() - 1].size());
             }
             if (event.type == SDL_TEXTEDITING)
             {
@@ -319,26 +323,13 @@ int main(int argc, char** argv)
                         }
                     }
                         break;
-                    case SDLK_UP: 
+                    case SDLK_UP:
+                        cursor.moveUp();
+
                         if (state == OPEN_FILE)
                         {
                             file_explorer.moveCursorUp(); 
                             break;
-                        }
-                        if (cursor_col > scren_max_cols)
-                        {
-                            cursor_row = 1;
-                            cursor_x = 0;
-
-                            cursor_col -= 1;
-                        }
-                        if (cursor_col > 1 && cursor_col <= scren_max_cols)
-                        {
-                            cursor_row = 1;
-                            cursor_x = 0;
-
-                            cursor_col -= 1;
-                            cursor_y -= cursor_h;
                         }
                         break;
                     case SDLK_KP_ENTER:
@@ -351,78 +342,57 @@ int main(int argc, char** argv)
                                 file_explorer.setPath(item);
                             } else
                             {
-                                cursor_row = 1;
-                                cursor_x = 0;
-
-                                cursor_col = 1;
-                                cursor_y = 0;
+                                cursor.move(1, 1);
 
                                 buffer = openFile(item);
                                 filename = item;
                                 state = EDITOR;
                             }
 
-                            // printf("%s\n", std::filesystem::is_directory(std::filesystem::path(file_explorer.getSelectedItem())));
                             break;
                         }
-                        if (buffer.size() >= 1 && buffer[cursor_col - 1][cursor_row - 1] != '\n')
+                        if (buffer.size() >= 1 && buffer[cursor.col() - 1][cursor.row() - 1] != '\n')
                         {
-                            std::string new_line = buffer.at(cursor_col - 1).substr(cursor_row - 1);
-                            buffer.at(cursor_col - 1).insert(cursor_row - 1, "\n"); 
-                            // delete the rest of the line after the current cursor_row position
-                            buffer.at(cursor_col - 1).erase(cursor_row - 1);
+                            std::string new_line = buffer.at(cursor.col() - 1).substr(cursor.row() - 1);
+                            buffer.at(cursor.col() - 1).insert(cursor.row() - 1, "\n");
+                            buffer.at(cursor.col() - 1).erase(cursor.row() - 1);
 
-                            // add a new line to the buffer with the rest of the line that was remove from last buffer line
-                            buffer.insert(buffer.begin() + (cursor_col), new_line);
+                            buffer.insert(buffer.begin() + (cursor.col()), new_line);
                         } else
                         {
-                            buffer.insert(buffer.begin() + cursor_col, "\n");
+                            buffer.insert(buffer.begin() + cursor.col(), "\n");
                         }
-                    case SDLK_DOWN: 
+                    case SDLK_DOWN:
+                        cursor.moveDown(buffer.size());
+                        
                         if (state == OPEN_FILE)
                         {
                             file_explorer.moveCursorDown();
                             break;
                         }; 
-                        if (cursor_col < buffer.size())
-                        {
-                            cursor_row = 1;
-                            cursor_x = 0;
-
-                            cursor_col += 1;
-                            if (cursor_y + cursor_h < SCREEN_HEIGHT - cursor_h)
-                                cursor_y += cursor_h;
-                        }
                         break;
                     case SDLK_BACKSPACE:
-                        if (buffer.size() >= 1 && cursor_row > 1)
+                        if (buffer.size() >= 1 && cursor.row() > 1)
                         {
-                            buffer.at(cursor_col - 1).erase(cursor_row - 2, 1);
-                        } else if (cursor_col > 1)
+                            buffer.at(cursor.col() - 1).erase(cursor.row() - 2, 1);
+                        } else if (cursor.col() > 1)
                         {
-                            // buffer.at(cursor_col - 2).append("hello"); 
-                            buffer.erase(buffer.begin() + (cursor_col - 1));
+                            buffer.erase(buffer.begin() + (cursor.col() - 1));
+                            cursor.moveUp();
                             cursor_col -= 1;
                             cursor_y -= cursor_h;
                         }
-                    case SDLK_LEFT: 
-                        if (cursor_x >= cursor_w)
-                        {
-                            cursor_row -= 1;
-                            cursor_x -= cursor_w;
-                        } 
+                    case SDLK_LEFT:
+                        cursor.moveLeft();
                         break;
-                    case SDLK_RIGHT: 
-                        if (cursor_x + cursor_w < SCREEN_WIDTH - cursor_w && cursor_row <= buffer[cursor_col - 1].size())
-                        { 
-                            moveCursorRight(&cursor_x, &cursor_row, cursor_w);
-
-                        }
+                    case SDLK_RIGHT:
+                        cursor.moveRight(buffer[cursor.col() - 1].size());
                         break;
                     case SDLK_TAB: 
-                        buffer.at(cursor_col - 1).insert(cursor_row - 1, "    ");
+                        buffer.at(cursor_col - 1).insert(cursor.row() - 1, "    ");
+                        // TODO: cursor.move(4, 0); move row by 4 instead of the for loop
                         for (int i = 0; i < 4; i++) {
-                            moveCursorRight(&cursor_x, &cursor_row, cursor_w);
+                            cursor.moveRight(buffer[cursor.col() - 1].size());
                         }
                         break;
                     default:
@@ -432,7 +402,7 @@ int main(int argc, char** argv)
         }
 
         // TODO: unsigned char takes 2 bytes space, messing up with cursor_row accuracy and out of bounds cursor_row position
-        status_line = "row: " + std::to_string(cursor_row) + " | col: " + std::to_string(cursor_col);
+        status_line = "row: " + std::to_string(cursor.row()) + " | col: " + std::to_string(cursor.col());
 
         // Render
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
@@ -443,15 +413,33 @@ int main(int argc, char** argv)
         {
             case State::EDITOR:
             {
-                 drawTextField(buffer, cursor_col - scren_max_cols, scren_max_cols, cursor_h, theme);
-                
-                 int status_width = 0;
-                 TTF_SizeText(font, status_line.c_str(), &status_width, NULL);
+                int cursor_col_offset = cursor.y() > 0 ? cursor.y() / cursor_h + 1 : 1;
 
-                 Text status_text(status_line, SCREEN_WIDTH - status_width, SCREEN_HEIGHT - cursor_h, font, 0xfb4934);
-                 status_text.makeTexture(renderer);
-                 status_text.draw(renderer);
-                 drawCursor(cursor_x, cursor_y, cursor_w, cursor_h, 0xFF8F40);
+                if (cursor.y() == 0 && cursor.col() > 0)
+                {
+                    begin_offset = cursor.col() - 1;
+                    end_offset = cursor.col() - 1 + scren_max_cols;
+                }
+                if (cursor_col_offset == scren_max_cols && cursor.col() > scren_max_cols - 1 )
+                {
+                    //drawTextField(buffer, cursor.col() - scren_max_cols, scren_max_cols, cursor_h, theme);
+                    begin_offset = cursor.col() - scren_max_cols;
+                    end_offset = cursor.col() - 1;
+                }
+
+                for (int i = begin_offset, j = 0; i < buffer.size(); i++, j++)
+                {
+                    drawLine(buffer[i], 0, j * cursor_h, theme);
+                }
+                
+                int status_width = 0;
+                TTF_SizeText(font, status_line.c_str(), &status_width, NULL);
+
+                Text status_text(status_line, SCREEN_WIDTH - status_width, SCREEN_HEIGHT - cursor_h, font, 0xfb4934);
+                status_text.makeTexture(renderer);
+                status_text.draw(renderer);
+                cursor.draw(renderer);
+                //drawCursor(cursor_x, cursor_y, cursor_w, cursor_h, 0xFF8F40);
                 break;
             }
             case State::OPEN_FILE:

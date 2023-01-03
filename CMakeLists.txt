@@ -29,7 +29,8 @@ set(SRC
     src/parser.cpp
     src/main.cpp
     src/text.h
-    src/text.cpp)
+    src/text.cpp
+    src/cursor.cpp)
 
 add_executable(${PROJECT_NAME} ${IMG_FILES} ${SRC})
 
