@@ -14,7 +14,7 @@ Cursor::Cursor(int width, int height, int max_row, int max_col)
 	m_height = height;
 }
 
-void Cursor::moveDown(int buffer_max_col)
+void Cursor::moveDown(size_t buffer_max_col)
 {
 	if (m_col < buffer_max_col)
 	{
@@ -34,6 +34,9 @@ void Cursor::moveUp()
 	{
 		m_col -= 1;
 
+		m_x = 0;
+		m_row = 1;
+
 		// TODO: weird cursor position when moving up
 		if (m_y - m_height >= 0)
 			m_y -= m_height;
@@ -49,7 +52,7 @@ void Cursor::moveLeft()
 	}
 }
 
-void Cursor::moveRight(int line_max_row)
+void Cursor::moveRight(size_t line_max_row)
 {
 	if (m_row < line_max_row + 1)
 	{
@@ -91,7 +94,7 @@ void Cursor::move(int row, int col)
 
 void Cursor::draw(SDL_Renderer* renderer)
 {
-	SDL_Color cursor_color = { 0x07, 0x66, 0x78, 0xFF };
+	SDL_Color cursor_color = { 0xFF, 0xB4, 0x54, 0xFF };
 	SDL_Rect cursor_rect = { m_x, m_y, m_width, m_height };
 	SDL_SetRenderDrawColor(renderer, cursor_color.r, cursor_color.g, cursor_color.b, 0xff);
 	SDL_RenderDrawLine(renderer, m_x, m_y, m_x, m_y + m_height);

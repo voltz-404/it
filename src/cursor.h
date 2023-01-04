@@ -7,13 +7,13 @@ class Cursor
 public:
 	Cursor(int width, int height, int max_row, int max_col);
 
-	void moveDown(int buffer_max_col);
+	void moveDown(size_t buffer_max_col);
 
 	void moveUp();
 
 	void moveLeft();
 
-	void moveRight(int line_max_row);
+	void moveRight(size_t line_max_row);
 
 	int row();
 

@@ -30,10 +30,10 @@ set(SRC
     src/main.cpp
     src/text.h
     src/text.cpp
-    src/cursor.cpp)
+    src/cursor.cpp "src/platform.cpp")
 
 add_executable(${PROJECT_NAME} ${IMG_FILES} ${SRC})
 
 set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
-target_link_libraries(${PROJECT_NAME} PRIVATE ${SDL2_LIBRARIES} ${PYTHON_LIBS}) #pybind11::embed)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${SDL2_LIBRARIES} ${PYTHON_LIBS} Comdlg32) #pybind11::embed)
