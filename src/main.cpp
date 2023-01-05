@@ -1,22 +1,10 @@
-#include <stdio.h>
-#include <string>
-#include <sstream>
-#include <iostream>
-#include <vector>
-#include <filesystem>
-#include <fstream>
-#include <algorithm>
-
-#include <SDL.h>
-#include <SDL_mixer.h>
-#include <SDL_ttf.h>
-
 //#include <pybind11/embed.h>
 
 #include "parser.h"
 #include "text.h"
 #include "cursor.h"
 #include "platform.h"
+#include "buffer.h"
 
 #undef main
 #undef wmain
@@ -27,92 +15,6 @@
 
 SDL_Renderer* renderer = nullptr;
 TTF_Font* font = nullptr;
-
-SDL_Color hexColorToSDLcolor(uint32_t color)
-{
-    uint8_t red = color >> 16 & 0xff, green = color >> 8 & 0xff, blue = color & 0xff;
-    SDL_Color sdl_color = { red, green, blue, 0xff };
-
-    return sdl_color;
-}
-
-std::vector<std::string> openFile(const std::string& path)
-{
-    std::vector<std::string> buffer;
-
-    std::ifstream file(path);
-    if (file)
-    {
-        std::string line;
-        while (getline(file, line))
-        {
-            buffer.emplace_back(line);
-        }
-    }
-    else
-    {
-        std::cerr << "Error: " << strerror(errno) << '\n';
-        printf("Could not open the file: %s\n", path.c_str());
-    }
-    
-    return buffer;
-}
-
-void drawLine(const std::string& line, int x, int y, Theme theme)
-{
-    if (line.size() < 1) return;
-    std::vector<Token> tokens = parser(line);
-
-    std::vector<std::string> keywords = { "int", "string", "return", "void", "char", "uint_32", "if", "else", "while", "for" ,"switch", "include", "const", "def", "import"};
-
-    int line_w = 0, line_h = 0;
-    TTF_SizeText(font, line.c_str(), &line_w, &line_h);
-
-    line_w += 2;
-
-    Text text(font, x, y);
-    text.reserveSurface(line_w, line_h);
-
-    bool string_start = false;
-    for (const Token& token : tokens)
-    {
-        uint32_t color;
-        int width = 0, height = 0;
-        TTF_SizeText(font, token.str.c_str(), &width, &height);
-
-        if (token.str == "\"")
-        {
-            color = theme.string_;
-            string_start = !string_start;
-        }
-        else if (token.str == "#")
-            color = theme.namepce;
-        else if (std::find(keywords.begin(), keywords.end(), token.str) != keywords.end())
-            color = theme.keyword;
-        else if (token.type == Token::Type::NUM)
-            color = theme.numbers;
-        else if (token.str == "std")
-            color = theme.namepce;
-        else 
-            color = theme.symbols;
-
-        if (string_start)
-        {
-            color = theme.string_;
-        }
-
-            
-        if (!string_start && token.str == "\"")
-        {
-            color = theme.string_;
-        }
-
-        text.append(token.str.c_str(), color);
-
-    }
-    text.makeTexture(renderer);
-    text.draw(renderer);
-}
 
 int main(int argc, char** argv)
 {
@@ -177,7 +79,7 @@ int main(int argc, char** argv)
 
     Cursor cursor(cursor_w, cursor_h, scren_max_rows, scren_max_cols);
 
-    std::vector<std::string> buffer = filename.size() > 0 ? openFile(filename.c_str()) : std::vector<std::string> ({""});
+    Buffer buffer(filename);
     std::string status_line = "row: " + std::to_string(cursor_row) + " | col: " + std::to_string(cursor_row);
 
     bool done = false;
@@ -198,14 +100,9 @@ int main(int argc, char** argv)
             SDL_StartTextInput();
             if (event.type == SDL_TEXTINPUT)
             {
-                if (buffer.size() == 0)
-                {
-                    buffer.emplace_back(event.text.text);
-                } else {
-                    buffer.at(cursor.col() - 1).insert(cursor.row() - 1, event.text.text);
-                }
+                buffer.append(cursor.row() - 1, cursor.col() - 1, event.text.text);
 
-                cursor.moveRight(buffer[cursor.col() - 1].size());
+                cursor.moveRight(buffer.getLineSize(cursor.col() - 1));
             }
             if (event.type == SDL_TEXTEDITING)
             {
@@ -221,25 +118,12 @@ int main(int argc, char** argv)
                     {
                         filename = getOpenFileName();
                         cursor.move(1, 1);
-                        buffer = openFile(filename);
+                        buffer.openFile(filename);
                     }
                         break;
                     case SDLK_F2:
                     {
-                        std::stringstream file_content;
-                        for (const std::string& line : buffer)
-                            file_content << line << "\n";
-
-                        // If files has no name as for one
-                        if (filename.size() == 0)
-                            filename = getSaveFileName();
-
-                        std::ofstream file(filename);
-                        if (file.is_open())
-                        {
-                            file << file_content.str();
-                            //puts("file saved");
-                        }
+                        buffer.saveBuffer();
                     }
                         break;
                     case SDLK_UP:
@@ -247,42 +131,30 @@ int main(int argc, char** argv)
                         break;
                     case SDLK_KP_ENTER:
                     case SDLK_RETURN:
-                        if (buffer.size() >= 1 && buffer[cursor.col() - 1][cursor.row() - 1] != '\n')
-                        {
-                            std::string new_line = buffer.at(cursor.col() - 1).substr(cursor.row() - 1);
-                            buffer.at(cursor.col() - 1).insert(cursor.row() - 1, "\n");
-                            buffer.at(cursor.col() - 1).erase(cursor.row() - 1);
-
-                            buffer.insert(buffer.begin() + (cursor.col()), new_line);
-                        } else
-                        {
-                            buffer.insert(buffer.begin() + cursor.col(), "\n");
-                        }
+                    {
+                        buffer.appendNewLine(cursor.col(), cursor.row());
+                    }
                     case SDLK_DOWN:
                         cursor.moveDown(buffer.size());
                         break;
                     case SDLK_BACKSPACE:
-                        if (buffer.size() >= 1 && cursor.row() > 1)
-                        {
-                            buffer.at(cursor.col() - 1).erase(cursor.row() - 2, 1);
-                        } else if (cursor.col() > 1)
-                        {
-                            buffer.erase(buffer.begin() + (cursor.col() - 1));
+                    {
+                        buffer.deleteAt(cursor.row(), cursor.col());
+
+                        if (buffer.size() >= 1 && cursor.row() == 1 && cursor.col() > 1)
                             cursor.moveUp();
-                            cursor_col -= 1;
-                            cursor_y -= cursor_h;
-                        }
+                    }
                     case SDLK_LEFT:
                         cursor.moveLeft();
                         break;
                     case SDLK_RIGHT:
-                        cursor.moveRight(buffer[cursor.col() - 1].size());
+                        cursor.moveRight(buffer.getLineSize(cursor.col() - 1));
                         break;
                     case SDLK_TAB: 
-                        buffer.at(cursor_col - 1).insert(cursor.row() - 1, "    ");
+                        buffer.append(cursor.row() - 1, cursor.col() - 1, "    ");
                         // TODO: cursor.move(4, 0); move row by 4 instead of the for loop
                         for (int i = 0; i < 4; i++) {
-                            cursor.moveRight(buffer[cursor.col() - 1].size());
+                            cursor.moveRight(buffer.getLineSize(cursor.col() - 1));
                         }
                         break;
                     default:
@@ -301,21 +173,7 @@ int main(int argc, char** argv)
         {
             int cursor_col_offset = cursor.y() > 0 ? cursor.y() / cursor_h + 1 : 1;
 
-            if (cursor.y() == 0 && cursor.col() > 0)
-            {
-                begin_offset = cursor.col() - 1;
-                end_offset = cursor.col() - 1 + scren_max_cols;
-            }
-            if (cursor_col_offset == scren_max_cols && cursor.col() > scren_max_cols - 1)
-            {
-                begin_offset = cursor.col() - scren_max_cols;
-                end_offset = cursor.col() - 1;
-            }
-
-            for (int i = begin_offset, j = 0; i < buffer.size(); i++, j++)
-            {
-                drawLine(buffer[i], 0, j * cursor_h, theme);
-            }
+            buffer.draw(renderer, font, begin_offset, end_offset, cursor.col(), cursor_col_offset, cursor.y(), scren_max_cols, theme);
         }
 
         // Status bar

@@ -26,11 +26,14 @@ string(STRIP "${SDL2_LIBRARIES}" SDL2_LIBRARIES)
 include_directories(${PROJECT_NAME} ${SDL2_INCLUDE_DIRS})
 
 set(SRC
+    src/buffer.cpp
     src/parser.cpp
     src/main.cpp
     src/text.h
     src/text.cpp
-    src/cursor.cpp "src/platform.cpp")
+    src/cursor.cpp
+    src/platform.cpp
+)
 
 add_executable(${PROJECT_NAME} ${IMG_FILES} ${SRC})
 
