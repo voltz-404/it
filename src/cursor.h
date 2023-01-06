@@ -25,7 +25,7 @@ public:
 
 	void move(int row, int col);
 
-	void draw(SDL_Renderer* renderer);
+	void draw();
 
 private:
 	int m_max_col;

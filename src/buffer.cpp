@@ -4,6 +4,7 @@
 
 #include "text.h"
 #include "platform.h"
+#include "internal.h"
 
 Buffer::Buffer()
 {
@@ -118,7 +119,7 @@ Buffer::~Buffer()
 {
 }
 
-void drawLine(SDL_Renderer* renderer, TTF_Font* font, const std::string& line, int x, int y, Theme theme)
+void drawLine(const std::string& line, int x, int y, Theme theme)
 {
     if (line.size() < 1) return;
     std::vector<Token> tokens = parser(line);
@@ -126,11 +127,11 @@ void drawLine(SDL_Renderer* renderer, TTF_Font* font, const std::string& line, i
     std::vector<std::string> keywords = { "int", "string", "return", "void", "char", "uint_32", "if", "else", "while", "for" ,"switch", "include", "const", "def", "import" };
 
     int line_w = 0, line_h = 0;
-    TTF_SizeText(font, line.c_str(), &line_w, &line_h);
+    TTF_SizeText(Editor::getFont(), line.c_str(), &line_w, &line_h);
 
     line_w += 2;
 
-    Text text(font, x, y);
+    Text text(x, y);
     text.reserveSurface(line_w, line_h);
 
     bool string_start = false;
@@ -138,7 +139,7 @@ void drawLine(SDL_Renderer* renderer, TTF_Font* font, const std::string& line, i
     {
         uint32_t color;
         int width = 0, height = 0;
-        TTF_SizeText(font, token.str.c_str(), &width, &height);
+        TTF_SizeText(Editor::getFont(), token.str.c_str(), &width, &height);
 
         if (token.str == "\"")
         {
@@ -170,11 +171,11 @@ void drawLine(SDL_Renderer* renderer, TTF_Font* font, const std::string& line, i
         text.append(token.str.c_str(), color);
 
     }
-    text.makeTexture(renderer);
-    text.draw(renderer);
+    text.makeTexture();
+    text.draw();
 }
 
-void Buffer::draw(SDL_Renderer* renderer, TTF_Font* font, int& begin_offset, int& end_offset, int col, int col_offset, int cursor_y, int max_cols, Theme theme)
+void Buffer::draw(int& begin_offset, int& end_offset, int col, int col_offset, int cursor_y, int max_cols, Theme theme)
 {
     if (cursor_y == 0 && col > 0)
     {
@@ -188,10 +189,10 @@ void Buffer::draw(SDL_Renderer* renderer, TTF_Font* font, int& begin_offset, int
     }
 
     int glyph_height = 0;
-    TTF_SizeText(font, "A", nullptr, &glyph_height);
+    TTF_SizeText(Editor::getFont(), "A", nullptr, &glyph_height);
 
     for (int i = begin_offset, j = 0; i < m_buffer.size(); i++, j++)
     {
-        drawLine(renderer, font, m_buffer[i], 0, j * glyph_height, theme);
+        drawLine(m_buffer[i], 0, j * glyph_height, theme);
     }
 }

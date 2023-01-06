@@ -2,6 +2,8 @@
 
 #include <stdio.h>
 
+#include "internal.h"
+
 Cursor::Cursor(int width, int height, int max_row, int max_col)
 {
 	m_max_col = max_col;
@@ -92,12 +94,12 @@ void Cursor::move(int row, int col)
 	m_y = (m_col - 1) * m_height;
 }
 
-void Cursor::draw(SDL_Renderer* renderer)
+void Cursor::draw()
 {
 	SDL_Color cursor_color = { 0xFF, 0xB4, 0x54, 0xFF };
 	SDL_Rect cursor_rect = { m_x, m_y, m_width, m_height };
-	SDL_SetRenderDrawColor(renderer, cursor_color.r, cursor_color.g, cursor_color.b, 0xff);
-	SDL_RenderDrawLine(renderer, m_x, m_y, m_x, m_y + m_height);
+	SDL_SetRenderDrawColor(Editor::getRenderer(), cursor_color.r, cursor_color.g, cursor_color.b, 0xff);
+	SDL_RenderDrawLine(Editor::getRenderer(), m_x, m_y, m_x, m_y + m_height);
 }
 
 

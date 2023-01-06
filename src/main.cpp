@@ -5,6 +5,7 @@
 #include "cursor.h"
 #include "platform.h"
 #include "buffer.h"
+#include "internal.h"
 
 #undef main
 #undef wmain
@@ -30,36 +31,14 @@ int main(int argc, char** argv)
         return -1;
     }
 
-    TTF_Init();
-    // Setup window
-    SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-    SDL_Window* window = SDL_CreateWindow("Blaze", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, window_flags);
-
-    // Setup SDL_Renderer instance
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED);
-    if (renderer == NULL)
-    {
-        SDL_Log("Error creating SDL_Renderer!");
-        return 0;
-    }
-
-    SDL_RenderSetLogicalSize(renderer, SCREEN_WIDTH, SCREEN_HEIGHT);
-
-    font = TTF_OpenFont("./assets/fonts/liberation-mono.ttf", 16);
-    if (font == nullptr)
-    {
-        printf("%s\n", TTF_GetError());
-        SDL_DestroyRenderer(renderer);
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        return -1;
-    }
+    SDL_RenderSetLogicalSize(Editor::getRenderer(), SCREEN_WIDTH, SCREEN_HEIGHT);
 
     // Pybind11
     // pybind11::scoped_interpreter guard{};
     // pybind11::exec(R"(print("Hello world"))");
     // ------------------------------------------------
     //
+
     Theme theme;
     theme.keyword = 0x689d6a;
     theme.symbols = 0xebdbb2;
@@ -67,20 +46,19 @@ int main(int argc, char** argv)
     theme.namepce = 0xfe8019;
     theme.string_ = 0x98971a;
 
-    int cursor_row = 1, cursor_col = 1;
-    int cursor_x = 0, cursor_y = 0, cursor_w = 0, cursor_h = 0;
-    TTF_SizeText(font, "A", &cursor_w, &cursor_h);
+    int cursor_w = 0, cursor_h = 0;
+    TTF_SizeText(Editor::getFont(), "A", &cursor_w, &cursor_h);
 
 
-    int scren_max_cols = SCREEN_HEIGHT / cursor_h;
-    int scren_max_rows = SCREEN_WIDTH / cursor_w;
+    int scren_max_cols = Editor::getScreenCols();
+    int scren_max_rows = Editor::getScreenRows();
 
     int begin_offset = 0, end_offset = scren_max_cols - 1;
 
     Cursor cursor(cursor_w, cursor_h, scren_max_rows, scren_max_cols);
 
     Buffer buffer(filename);
-    std::string status_line = "row: " + std::to_string(cursor_row) + " | col: " + std::to_string(cursor_row);
+    std::string status_line = "row: " + std::to_string(1) + " | col: " + std::to_string(1);
 
     bool done = false;
     while (!done)
@@ -90,7 +68,7 @@ int main(int argc, char** argv)
         {
             if (event.type == SDL_QUIT)
                 done = true;
-            if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))
+            if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(Editor::getWindow()))
                 done = true;
 
             if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)
@@ -165,15 +143,15 @@ int main(int argc, char** argv)
 
 
         // Render
-        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-        SDL_SetRenderDrawColor(renderer, 0x1d, 0x20, 0x21, 0xff);
-        SDL_RenderClear(renderer);
+        SDL_SetRenderDrawBlendMode(Editor::getRenderer(), SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawColor(Editor::getRenderer(), 0x1d, 0x20, 0x21, 0xff);
+        SDL_RenderClear(Editor::getRenderer());
 
         // Render the editor
         {
             int cursor_col_offset = cursor.y() > 0 ? cursor.y() / cursor_h + 1 : 1;
 
-            buffer.draw(renderer, font, begin_offset, end_offset, cursor.col(), cursor_col_offset, cursor.y(), scren_max_cols, theme);
+            buffer.draw(begin_offset, end_offset, cursor.col(), cursor_col_offset, cursor.y(), scren_max_cols, theme);
         }
 
         // Status bar
@@ -183,22 +161,23 @@ int main(int argc, char** argv)
             status_line = "row: " + std::to_string(cursor.row()) + " | col: " + std::to_string(cursor.col());
 
             int status_width = 0;
-            TTF_SizeText(font, status_line.c_str(), &status_width, NULL);
+            TTF_SizeText(Editor::getFont(), status_line.c_str(), &status_width, NULL);
 
-            Text status_text(status_line, SCREEN_WIDTH - status_width, SCREEN_HEIGHT - cursor_h, font, 0xfb4934);
-            status_text.makeTexture(renderer);
-            status_text.draw(renderer);
-            cursor.draw(renderer);
+            Text status_text(status_line, SCREEN_WIDTH - status_width, SCREEN_HEIGHT - cursor_h, 0xfb4934);
+            status_text.makeTexture();
+            status_text.draw();
         }
 
+        // Cursor
+        cursor.draw();
 
-        SDL_RenderPresent(renderer);
+        SDL_RenderPresent(Editor::getRenderer());
     }
 
     // Cleanup
-    TTF_CloseFont(font);
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
+    TTF_CloseFont(Editor::getFont());
+    SDL_DestroyRenderer(Editor::getRenderer());
+    SDL_DestroyWindow(Editor::getWindow());
     SDL_Quit();
 
     return 0;

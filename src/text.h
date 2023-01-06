@@ -15,13 +15,13 @@ enum ColorMask
 class Text
 {
 public:
-	Text(const std::string& text, int x, int y, TTF_Font* font, uint32_t color);
-	Text(TTF_Font* font, int x, int y);
+	Text(const std::string& text, int x, int y, uint32_t color);
+	Text(int x, int y);
 	~Text();
 	
 	void reserveSurface(const int width, const int height);
 
-	void makeTexture(SDL_Renderer* renderer);
+	void makeTexture();
 
 	void append(const std::string& text, const uint32_t color);
 
@@ -29,7 +29,7 @@ public:
 
 	SDL_Surface* getSurface();
 
-	void draw(SDL_Renderer* renderer);
+	void draw();
 private:
 	SDL_Surface* m_surface;
 	SDL_Texture* m_texture;

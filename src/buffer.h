@@ -36,7 +36,7 @@ public:
 
 	~Buffer();
 
-	void draw(SDL_Renderer* renderer, TTF_Font* font, int& begin_offset, int& end_offset, int col, int col_offset, int cursor_y, int max_cols, Theme theme);
+	void draw(int& begin_offset, int& end_offset, int col, int col_offset, int cursor_y, int max_cols, Theme theme);
 
 private:
 	std::string m_filename;

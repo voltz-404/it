@@ -26,6 +26,7 @@ string(STRIP "${SDL2_LIBRARIES}" SDL2_LIBRARIES)
 include_directories(${PROJECT_NAME} ${SDL2_INCLUDE_DIRS})
 
 set(SRC
+    "src/internal.cpp"
     src/buffer.cpp
     src/parser.cpp
     src/main.cpp
