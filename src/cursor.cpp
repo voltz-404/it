@@ -39,7 +39,6 @@ void Cursor::moveUp()
 		m_x = 0;
 		m_row = 1;
 
-		// TODO: weird cursor position when moving up
 		if (m_y - m_height >= 0)
 			m_y -= m_height;
 	}

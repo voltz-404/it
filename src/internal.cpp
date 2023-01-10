@@ -30,7 +30,7 @@ Editor* Editor::get()
 			std::cerr << "Couldn't create the renderer\n";
 			return nullptr;
 		}
-		editor->m_font = TTF_OpenFont("./assets/fonts/liberation-mono.ttf", 16);
+		editor->m_font = TTF_OpenFont("./assets/fonts/Inconsolata-Regular.ttf", 18);
 		if (editor->m_font == nullptr)
 		{
 			printf("%s\n", TTF_GetError());
@@ -79,6 +79,6 @@ int Editor::getScreenCols()
 int Editor::getScreenRows()
 {
 	int glyph_width = 0;
-	TTF_SizeText(Editor::getFont(), "A", nullptr, &glyph_width);
+	TTF_SizeText(Editor::getFont(), "A", &glyph_width, nullptr);
 	return get()->m_screen_width / glyph_width;
 }

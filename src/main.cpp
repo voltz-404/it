@@ -13,10 +13,6 @@
 #define SCREEN_WIDTH 1080
 #define SCREEN_HEIGHT 720
 
-
-SDL_Renderer* renderer = nullptr;
-TTF_Font* font = nullptr;
-
 int main(int argc, char** argv)
 {
     std::string filename;
@@ -47,15 +43,15 @@ int main(int argc, char** argv)
     theme.string_ = 0x98971a;
 
     int cursor_w = 0, cursor_h = 0;
-    TTF_SizeText(Editor::getFont(), "A", &cursor_w, &cursor_h);
+    TTF_SizeText(Editor::getFont(), "_", &cursor_w, &cursor_h);
 
 
-    int scren_max_cols = Editor::getScreenCols();
-    int scren_max_rows = Editor::getScreenRows();
+    int screen_max_cols = Editor::getScreenCols();
+    int screen_max_rows = Editor::getScreenRows();
 
-    int begin_offset = 0, end_offset = scren_max_cols - 1;
+    int begin_offset = 0, end_offset = screen_max_cols - 1;
 
-    Cursor cursor(cursor_w, cursor_h, scren_max_rows, scren_max_cols);
+    Cursor cursor(cursor_w, cursor_h, screen_max_rows, screen_max_cols);
 
     Buffer buffer(filename);
     std::string status_line = "row: " + std::to_string(1) + " | col: " + std::to_string(1);
@@ -78,7 +74,21 @@ int main(int argc, char** argv)
             SDL_StartTextInput();
             if (event.type == SDL_TEXTINPUT)
             {
-                buffer.append(cursor.row() - 1, cursor.col() - 1, event.text.text);
+
+                if (event.text.text[0] == '{')
+                {
+                    buffer.append(cursor.row() - 1, cursor.col() - 1, "{}");
+                }
+                else if (std::string(event.text.text) == "(")
+                {
+                    buffer.append(cursor.row() - 1, cursor.col() - 1, "()");
+                }
+                else if (std::string(event.text.text) == "[")
+                {
+                    buffer.append(cursor.row() - 1, cursor.col() - 1, "[]");
+                }
+                else
+                    buffer.append(cursor.row() - 1, cursor.col() - 1, event.text.text);
 
                 cursor.moveRight(buffer.getLineSize(cursor.col() - 1));
             }
@@ -105,6 +115,8 @@ int main(int argc, char** argv)
                     }
                         break;
                     case SDLK_UP:
+                        if (cursor.y() == 0 && cursor.col() > 1)
+                            buffer.redraw();
                         cursor.moveUp();
                         break;
                     case SDLK_KP_ENTER:
@@ -113,6 +125,9 @@ int main(int argc, char** argv)
                         buffer.appendNewLine(cursor.col(), cursor.row());
                     }
                     case SDLK_DOWN:
+                        if (cursor.col() >= screen_max_cols)
+                            buffer.redraw();
+
                         cursor.moveDown(buffer.size());
                         break;
                     case SDLK_BACKSPACE:
@@ -151,7 +166,7 @@ int main(int argc, char** argv)
         {
             int cursor_col_offset = cursor.y() > 0 ? cursor.y() / cursor_h + 1 : 1;
 
-            buffer.draw(begin_offset, end_offset, cursor.col(), cursor_col_offset, cursor.y(), scren_max_cols, theme);
+            buffer.draw(begin_offset, end_offset, cursor.col(), cursor_col_offset, cursor.y(), screen_max_cols, theme);
         }
 
         // Status bar

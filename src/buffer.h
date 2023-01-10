@@ -32,6 +32,8 @@ public:
 
 	void saveBuffer();
 
+	void redraw();
+
 	size_t size();
 
 	~Buffer();
@@ -41,5 +43,7 @@ public:
 private:
 	std::string m_filename;
 	std::vector <std::string> m_buffer;
+	std::vector <SDL_Texture*> m_textures;
 
+	bool m_redraw;
 };
