@@ -25,9 +25,10 @@ Editor* Editor::get()
 			return nullptr;
 		}
 		editor->m_renderer = SDL_CreateRenderer(editor->m_window, -1, SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED);
-		if (editor->m_window == nullptr)
+		if (editor->m_renderer == nullptr)
 		{
-			std::cerr << "Couldn't create the renderer\n";
+			std::cerr << "Couldn't create the renderer: " << SDL_GetError() << "\n";
+			SDL_DestroyWindow(editor->m_window);
 			return nullptr;
 		}
 		editor->m_font = TTF_OpenFont("./assets/fonts/Inconsolata-Regular.ttf", 18);

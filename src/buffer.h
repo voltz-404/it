@@ -20,13 +20,13 @@ public:
 
 	void openFile(const std::string filename);
 
-	void deleteChar(const int row, const int col, int count = 1);
+	void deleteChar(const size_t row, const size_t col, int count = 1);
 
-	void deleteAt(const int row, const int col);
+	void deleteAt(const size_t row, const size_t col);
 
-	void append(const int row, const int col, const std::string& str);
+	void append(const size_t row, const size_t col, const std::string& str);
 
-	void appendNewLine(const int col, const int row);
+	void appendNewLine(const size_t col, const size_t row);
 
 	size_t getLineSize(const size_t col);
 
@@ -38,7 +38,7 @@ public:
 
 	~Buffer();
 
-	void draw(int& begin_offset, int& end_offset, int col, int col_offset, int cursor_y, int max_cols, Theme theme);
+	void draw(size_t& begin_offset, size_t& end_offset, size_t col, size_t col_offset, size_t cursor_y, size_t max_cols, Theme theme);
 
 private:
 	std::string m_filename;

@@ -53,12 +53,12 @@ void Buffer::openFile(const std::string filename)
     m_redraw = true;
 }
 
-void Buffer::deleteChar(const int row, const int col, int count)
+void Buffer::deleteChar(const size_t row, const size_t col, int count)
 {
 
 }
 
-void Buffer::deleteAt(const int row, const int col)
+void Buffer::deleteAt(const size_t row, const size_t col)
 {
     if (m_buffer.size() >= 1 && row > 1)
     {
@@ -66,6 +66,7 @@ void Buffer::deleteAt(const int row, const int col)
     }
     else if (col > 1)
     {
+        m_buffer[col - 2] += m_buffer[col - 1];
         m_buffer.erase(m_buffer.begin() + (col - 1));
     }
 
@@ -73,7 +74,7 @@ void Buffer::deleteAt(const int row, const int col)
 
 }
 
-void Buffer::append(const int row, const int col, const std::string& str)
+void Buffer::append(const size_t row, const size_t col, const std::string& str)
 {
     if (m_buffer.size() != 0)
     {
@@ -85,12 +86,12 @@ void Buffer::append(const int row, const int col, const std::string& str)
     m_redraw = true;
 }
 
-void Buffer::appendNewLine(const int col, const int row)
+void Buffer::appendNewLine(const size_t col, const size_t row)
 {
     if (m_buffer.size() >= 1 && m_buffer[col - 1 ][row - 1] != '\n')
     {
         std::string new_line = m_buffer.at(col - 1).substr(row - 1);
-        m_buffer.at(col - 1).insert(row - 1, "\n");
+        //m_buffer.at(col - 1).insert(row - 1, "\n");
         m_buffer.at(col - 1).erase(row - 1);
 
         m_buffer.insert(m_buffer.begin() + (col), new_line);
@@ -100,13 +101,13 @@ void Buffer::appendNewLine(const int col, const int row)
         m_buffer.insert(m_buffer.begin() + col, "\n");
     }
 
-    if (row > 1)
-    {
-        if (m_buffer[col - 1][row - 2] == '{')
-        {
-            m_buffer.insert(m_buffer.begin() + (col), "");
-        }
-    }
+    //if (row > 1)
+    //{
+    //    if (m_buffer[col - 1][row - 2] == '{')
+    //    {
+    //        m_buffer.insert(m_buffer.begin() + (col), "");
+    //    }
+    //}
 
     m_redraw = true;
 }
@@ -207,7 +208,7 @@ SDL_Texture* renderLine(const std::string& line, int x, int y, Theme theme)
     return texture;
 }
 
-void Buffer::draw(int& begin_offset, int& end_offset, int col, int col_offset, int cursor_y, int max_cols, Theme theme)
+void Buffer::draw(size_t& begin_offset, size_t& end_offset, size_t col, size_t col_offset, size_t cursor_y, size_t max_cols, Theme theme)
 {
     int glyph_height = 0;
     TTF_SizeText(Editor::getFont(), "A", nullptr, &glyph_height);
@@ -218,12 +219,12 @@ void Buffer::draw(int& begin_offset, int& end_offset, int col, int col_offset, i
         if (cursor_y == 0 && col > 0)
         {
             begin_offset = col - 1;
-            end_offset = col + max_cols;
+            end_offset = col + max_cols - 1;
         }
         if (col_offset == max_cols && col > max_cols - 1)
         {
             begin_offset = col - max_cols;
-            end_offset = col - 1;
+            end_offset = col;
         }
 
         for (SDL_Texture* texture : m_textures)
@@ -231,7 +232,7 @@ void Buffer::draw(int& begin_offset, int& end_offset, int col, int col_offset, i
 
         m_textures.clear();
 
-        for (int i = begin_offset, j = 0; i < m_buffer.size(); i++, j++)
+        for (size_t i = begin_offset, j = 0; i < end_offset && i < m_buffer.size(); i++, j++)
         {
             SDL_Texture* texture = renderLine(m_buffer[i], 0, j * glyph_height, theme);
             m_textures.push_back(texture);

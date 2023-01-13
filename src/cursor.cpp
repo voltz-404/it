@@ -86,11 +86,20 @@ int Cursor::y()
 
 void Cursor::move(int row, int col)
 {
-	m_row = row;
-	m_col = col;
+	if (row > 0)
+	{
+		m_row = row;
+		m_x = ((row - 1) % Editor::getScreenRows()) * m_width;
+	}
 
-	m_x = (m_row - 1) * m_width;
-	m_y = (m_col - 1) * m_height;
+	if (col > 0)
+	{
+		m_col = col;
+		m_y = 0;
+
+		//if (col < Editor::getScreenCols())
+		//	m_y = (col - 1) * m_height;
+	}
 }
 
 void Cursor::draw()

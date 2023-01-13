@@ -6,7 +6,7 @@ std::string getSaveFileName()
 {
 	HANDLE hf;
 	OPENFILENAME ofn;
-	char filename[260];
+	char filename[260] = { 0 };
 
 
 	// Initialize OPENFILENAME
@@ -42,9 +42,8 @@ std::string getSaveFileName()
 
 std::string getOpenFileName()
 {
-	HANDLE hf;
 	OPENFILENAME ofn;
-	char filename[260];
+	char filename[260] =  { 0 };
 
 	// Display the Open dialog box.
 	ZeroMemory(&ofn, sizeof(ofn));
