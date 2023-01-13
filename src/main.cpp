@@ -13,6 +13,24 @@
 #define SCREEN_WIDTH 1080
 #define SCREEN_HEIGHT 720
 
+bool ctrlKey(SDL_Event& event, SDL_Keycode key)
+{
+    static bool ctrl_key = false;
+
+    if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_LCTRL)
+    {
+        ctrl_key = true;
+
+        return (ctrl_key && event.key.keysym.sym == key);
+    }
+    else if (event.type == SDL_KEYUP && event.key.keysym.sym == SDLK_LCTRL)
+    {
+        ctrl_key = false;
+    }
+
+    return false;
+}
+
 int main(int argc, char** argv)
 {
     std::string filename;
@@ -90,7 +108,7 @@ int main(int argc, char** argv)
             {
                 if (goto_)
                 {
-                        goto_line << event.text.text[0];
+                    goto_line << event.text.text[0];
                 }
                 else
                 {
@@ -106,6 +124,10 @@ int main(int argc, char** argv)
                     {
                         buffer.append(cursor.row() - 1, cursor.col() - 1, "[]");
                     }
+                    else if (std::string(event.text.text) == "\"")
+                    {
+                        buffer.append(cursor.row() - 1, cursor.col() - 1, "\"\"");
+                    }
                     else
                         buffer.append(cursor.row() - 1, cursor.col() - 1, event.text.text);
 
@@ -117,6 +139,28 @@ int main(int argc, char** argv)
                 // printf("%s\n", event.text.text);
             }
 
+            if (ctrlKey(event, SDLK_g))
+            {
+                goto_ = true;
+            }
+            else if (ctrlKey(event, SDLK_o))
+            {
+                std::string temp_filename = getOpenFileName();
+                if (temp_filename.size() > 0)
+                {
+                    filename = temp_filename;
+                    cursor.move(1, 1);
+                    buffer.openFile(filename);
+                }
+            }
+            else if (ctrlKey(event, SDLK_l))
+            {
+                cursor.move(buffer.getLineSize(cursor.col() - 1) + 1, 0);
+            }
+            else if (ctrlKey(event, SDLK_j))
+            {
+                cursor.move(1, 0);
+            }
 
             if(event.type == SDL_KEYDOWN)
             {
@@ -228,7 +272,7 @@ int main(int argc, char** argv)
                         break;
                     case SDLK_TAB: 
                         buffer.append(cursor.row() - 1, cursor.col() - 1, "    ");
-                        cursor.move(cursor.row() + 4, cursor.col());
+                        cursor.move(cursor.row() + 4, 0);
                         break;
                     default:
                         break;
@@ -264,7 +308,8 @@ int main(int argc, char** argv)
             }
             else
             {
-                drawText("file: " + filename, 0, SCREEN_HEIGHT - cursor_h, 0xfb4934);
+                std::string file_saved = !buffer.fileSaved() ? "(!)" : "(saved)";
+                drawText("file: " + filename + file_saved, 0, SCREEN_HEIGHT - cursor_h, 0xfb4934);
             }
         }
 

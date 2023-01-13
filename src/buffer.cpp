@@ -1,6 +1,7 @@
 #include "buffer.h"
 
 #include <stdio.h>
+#include <algorithm>
 
 #include "text.h"
 #include "platform.h"
@@ -12,6 +13,7 @@ Buffer::Buffer()
     m_buffer = { "" };
     m_textures = { nullptr };
     m_redraw = true;
+    m_file_saved = true;
 }
 
 Buffer::Buffer(const std::string filename)
@@ -20,6 +22,7 @@ Buffer::Buffer(const std::string filename)
 	m_buffer = { "" };
     m_textures = { nullptr };
     m_redraw = true;
+    m_file_saved = true;
 
     if (filename.size() != 0)
 	    openFile(filename);
@@ -27,17 +30,24 @@ Buffer::Buffer(const std::string filename)
 
 void Buffer::openFile(const std::string filename)
 {
-    if (m_buffer.size() > 0)
-    {
-        m_buffer.clear();
-    }
+    if (filename.size() < 1) return;
 
     std::ifstream file(filename);
     if (file)
     {
+        if (m_buffer.size() > 0)
+        {
+            m_buffer.clear();
+        }
+
         std::string line;
         while (getline(file, line))
         {
+            if (line.size() > 0 && line[0] == '\t')
+            {
+                line.erase(line.begin());
+                line.insert(0, "    ");
+            }
             m_buffer.emplace_back(line);
         }
 
@@ -71,7 +81,7 @@ void Buffer::deleteAt(const size_t row, const size_t col)
     }
 
     m_redraw = true;
-
+    m_file_saved = false;
 }
 
 void Buffer::append(const size_t row, const size_t col, const std::string& str)
@@ -84,6 +94,7 @@ void Buffer::append(const size_t row, const size_t col, const std::string& str)
         m_buffer.emplace_back(str);
 
     m_redraw = true;
+    m_file_saved = false;
 }
 
 void Buffer::appendNewLine(const size_t col, const size_t row)
@@ -110,6 +121,7 @@ void Buffer::appendNewLine(const size_t col, const size_t row)
     //}
 
     m_redraw = true;
+    m_file_saved = false;
 }
 
 size_t Buffer::getLineSize(const size_t col)
@@ -131,6 +143,7 @@ void Buffer::saveBuffer()
     if (file.is_open())
     {
         file << file_content.str();
+        m_file_saved = true;
     }
 }
 
@@ -142,6 +155,11 @@ void Buffer::redraw()
 size_t Buffer::size()
 {
     return m_buffer.size();
+}
+
+bool Buffer::fileSaved()
+{
+    return m_file_saved;
 }
 
 Buffer::~Buffer()

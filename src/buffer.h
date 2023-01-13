@@ -36,6 +36,8 @@ public:
 
 	size_t size();
 
+	bool fileSaved();
+
 	~Buffer();
 
 	void draw(size_t& begin_offset, size_t& end_offset, size_t col, size_t col_offset, size_t cursor_y, size_t max_cols, Theme theme);
@@ -46,4 +48,5 @@ private:
 	std::vector <SDL_Texture*> m_textures;
 
 	bool m_redraw;
+	bool m_file_saved;
 };
