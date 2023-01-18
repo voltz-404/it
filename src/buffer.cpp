@@ -64,9 +64,18 @@ void Buffer::openFile(const std::string& filename)
     m_redraw = true;
 }
 
-void Buffer::deleteChar(const size_t row, const size_t col, int count)
+void Buffer::deleteLine(const size_t col)
 {
+    if (col == 1)
+    {
+        m_buffer[col - 1] = "";
+    }
+    else
+    {
+        m_buffer.erase(m_buffer.begin() + (col - 1));
+    }
 
+    m_redraw = true;
 }
 
 void Buffer::deleteAt(const size_t row, const size_t col)

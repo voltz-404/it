@@ -20,7 +20,7 @@ public:
 
 	void openFile(const std::string& filename);
 
-	void deleteChar(const size_t row, const size_t col, int count = 1);
+	void deleteLine(const size_t col);
 
 	void deleteAt(const size_t row, const size_t col);
 

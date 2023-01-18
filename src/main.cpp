@@ -170,11 +170,37 @@ int main(int argc, char** argv)
                 buffer.append(0, cursor.col() - 1, "    ");
                 cursor.move(cursor.row() + 4, 0);
             }
+            else if (ctrlKey(event, SDLK_x))
+            {
+                buffer.deleteLine(cursor.col());
+                cursor.move(1, 0);
+                if (cursor.col() > buffer.size())
+                    cursor.moveUp();
+            }
+
+            if (event.type == SDL_MOUSEWHEEL)
+            {
+                // Mouse scroll up
+                if (event.wheel.y > 0)
+                {
+                    buffer.redraw();
+                    cursor.move(1, cursor.col() - 1);
+                }
+
+                // Mouse scroll down
+                if (event.wheel.y < 0 && cursor.col() < buffer.size())
+                {
+                    buffer.redraw();
+                    cursor.move(1, cursor.col() + 1);
+                }
+
+            }
 
             if(event.type == SDL_KEYDOWN)
             {
                 switch(event.key.keysym.sym)
                 {
+
                     case SDLK_F4:
                         goto_ = !goto_;
                     break;
