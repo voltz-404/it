@@ -17,9 +17,10 @@ bool ctrlKey(SDL_Event& event, SDL_Keycode key)
 {
     static bool ctrl_key = false;
 
-    if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_LCTRL)
+    if (event.type == SDL_KEYDOWN)
     {
-        ctrl_key = true;
+        if (event.key.keysym.sym == SDLK_LCTRL)
+            ctrl_key = true;
 
         return (ctrl_key && event.key.keysym.sym == key);
     }
@@ -70,15 +71,14 @@ int main(int argc, char** argv)
     TTF_SizeText(Editor::getFont(), "_", &cursor_w, &cursor_h);
 
 
-    int screen_max_cols = Editor::getScreenCols();
-    int screen_max_rows = Editor::getScreenRows();
+    size_t screen_max_cols = Editor::getScreenCols();
+    size_t screen_max_rows = Editor::getScreenRows();
 
     size_t begin_offset = 0, end_offset = screen_max_cols - 1;
 
     Cursor cursor(cursor_w, cursor_h, screen_max_rows, screen_max_cols);
 
     Buffer buffer(filename);
-    std::string status_line = "row: " + std::to_string(1) + " | col: " + std::to_string(1);
 
     std::stringstream goto_line;
     bool goto_ = false;
@@ -141,7 +141,7 @@ int main(int argc, char** argv)
 
             if (ctrlKey(event, SDLK_g))
             {
-                goto_ = true;
+                goto_ = !goto_;
             }
             else if (ctrlKey(event, SDLK_o))
             {
@@ -152,6 +152,10 @@ int main(int argc, char** argv)
                     cursor.move(1, 1);
                     buffer.openFile(filename);
                 }
+            }
+            else if (ctrlKey(event, SDLK_s))
+            {
+                buffer.saveBuffer();
             }
             else if (ctrlKey(event, SDLK_l))
             {
@@ -167,7 +171,7 @@ int main(int argc, char** argv)
                 switch(event.key.keysym.sym)
                 {
                     case SDLK_F4:
-                        goto_ = true;
+                        goto_ = !goto_;
                         /*cursor.move(0, 5);
                         printf("%d\n", cursor.col());
                         buffer.redraw();*/
@@ -192,7 +196,7 @@ int main(int argc, char** argv)
                         break;
                     case SDLK_UP:
                     {
-                        int cursor_row_pos = cursor.row();
+                        size_t cursor_row_pos = cursor.row();
 
                         if (cursor.y() == 0 && cursor.col() > 1)
                             buffer.redraw();
@@ -201,7 +205,7 @@ int main(int argc, char** argv)
                         if (buffer.getLineSize(cursor.col() - 1) > cursor_row_pos)
                             cursor.move(cursor_row_pos, 0);
                         else
-                            cursor.move(buffer.getLineSize(cursor.col() - 1), 0);
+                            cursor.move(buffer.getLineSize(cursor.col() - 1) + 1, 0);
 
                     }
                         break;
@@ -210,7 +214,7 @@ int main(int argc, char** argv)
                     {
                         if (goto_)
                         {
-                            int line_num = 0;
+                            size_t line_num = 0;
                             goto_line >> line_num;
                             if (line_num > buffer.size())
                                 line_num = buffer.size();
@@ -232,7 +236,7 @@ int main(int argc, char** argv)
                         break;
                     case SDLK_DOWN:
                     {
-                        int cursor_row_pos = cursor.row();
+                        size_t cursor_row_pos = cursor.row();
 
                         /// TODO: if buffer is scrolled down, this will be true, fix it
                         if (cursor.col() > screen_max_cols - 1)
@@ -243,7 +247,7 @@ int main(int argc, char** argv)
                         if (buffer.getLineSize(cursor.col() - 1) > cursor_row_pos - 1)
                             cursor.move(cursor_row_pos, 0);
                         else
-                            cursor.move(buffer.getLineSize(cursor.col() - 1), 0);
+                            cursor.move(buffer.getLineSize(cursor.col() - 1) + 1, 0);
                     }
                     break;
                     case SDLK_BACKSPACE:
@@ -295,12 +299,12 @@ int main(int argc, char** argv)
         // Status bar
         {
             // TODO: unsigned char takes 2 bytes space, messing up with cursor_row accuracy and out of bounds cursor_row position
-            status_line = "row: " + std::to_string(cursor.row()) + " | col: " + std::to_string(cursor.col());
+            const std::string status_line = "row: " + std::to_string(cursor.row()) + " | col: " + std::to_string(cursor.col());
 
             int status_width = 0;
             TTF_SizeText(Editor::getFont(), status_line.c_str(), &status_width, NULL);
 
-            drawText(status_line, SCREEN_WIDTH - status_width, SCREEN_HEIGHT - cursor_h, 0xfb4934);
+            drawText(status_line, Editor::getScreenWidth() - status_width, Editor::getScreenHeight() - cursor_h, 0xfb4934);
             
             if (goto_)
             {
@@ -308,8 +312,8 @@ int main(int argc, char** argv)
             }
             else
             {
-                std::string file_saved = !buffer.fileSaved() ? "(!)" : "(saved)";
-                drawText("file: " + filename + file_saved, 0, SCREEN_HEIGHT - cursor_h, 0xfb4934);
+                const std::string file_saved = !buffer.fileSaved() ? "(!)" : "(saved)";
+                drawText("file: " + filename + file_saved, 0, Editor::getScreenHeight() - cursor_h, 0xfb4934);
             }
         }
 

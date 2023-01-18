@@ -2,17 +2,26 @@
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
 #include <windows.h>
+
+#include <SDL_syswm.h>
+#include "internal.h"
+
 std::string getSaveFileName()
 {
 	HANDLE hf;
 	OPENFILENAME ofn;
 	char filename[260] = { 0 };
 
+	// Get Window HWND
+	SDL_SysWMinfo info;
+	SDL_VERSION(&info.version);
+	SDL_GetWindowWMInfo(Editor::getWindow(), &info);
+	HWND hwnd = info.info.win.window;
 
 	// Initialize OPENFILENAME
 	ZeroMemory(&ofn, sizeof(ofn));
 	ofn.lStructSize = sizeof(ofn);
-	ofn.hwndOwner = NULL;
+	ofn.hwndOwner = hwnd;
 	ofn.lpstrFile = filename;
 	ofn.lpstrFile[0] = '\0';
 	ofn.nMaxFile = sizeof(filename);
@@ -21,7 +30,7 @@ std::string getSaveFileName()
 	ofn.lpstrFileTitle = NULL;
 	ofn.nMaxFileTitle = 0;
 	ofn.lpstrInitialDir = NULL;
-	ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+	ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
 
 	// Display the Open dialog box. 
 
@@ -45,10 +54,16 @@ std::string getOpenFileName()
 	OPENFILENAME ofn;
 	char filename[260] =  { 0 };
 
+	// Get Window HWND
+	SDL_SysWMinfo info = { 0 };
+	SDL_VERSION(&info.version);
+	SDL_GetWindowWMInfo(Editor::getWindow(), &info);
+	HWND hwnd = info.info.win.window;
+
 	// Display the Open dialog box.
 	ZeroMemory(&ofn, sizeof(ofn));
 	ofn.lStructSize = sizeof(ofn);
-	ofn.hwndOwner = NULL;
+	ofn.hwndOwner = hwnd;
 	ofn.lpstrFile = filename;
 	ofn.lpstrFile[0] = '\0';
 	ofn.nMaxFile = sizeof(filename);

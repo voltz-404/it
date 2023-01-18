@@ -24,7 +24,7 @@ Editor* Editor::get()
 			std::cerr << "Couldn't create the window\n";
 			return nullptr;
 		}
-		editor->m_renderer = SDL_CreateRenderer(editor->m_window, -1, SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED);
+		editor->m_renderer = SDL_CreateRenderer(editor->m_window, -1, SDL_RENDERER_ACCELERATED);
 		if (editor->m_renderer == nullptr)
 		{
 			std::cerr << "Couldn't create the renderer: " << SDL_GetError() << "\n";

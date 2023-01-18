@@ -16,15 +16,15 @@ class Buffer
 public:
 	Buffer();
 
-	Buffer(const std::string filename);
+	Buffer(const std::string& filename);
 
-	void openFile(const std::string filename);
+	void openFile(const std::string& filename);
 
 	void deleteChar(const size_t row, const size_t col, int count = 1);
 
 	void deleteAt(const size_t row, const size_t col);
 
-	void append(const size_t row, const size_t col, const std::string& str);
+	void append(const size_t row, const size_t col, const std::string_view& str);
 
 	void appendNewLine(const size_t col, const size_t row);
 

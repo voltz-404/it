@@ -18,11 +18,11 @@ SDL_Surface* makeTextSuface(const std::string& text, uint32_t color)
 
 SDL_Surface* makeSurface(const int width, const int height)
 {
-    SDL_Surface* surface = SDL_CreateRGBSurface(0, width, height, 32, 0, 0, 0, 0);
-    SDL_SetSurfaceBlendMode(surface, SDL_BLENDMODE_BLEND);
+    SDL_Surface* surface = SDL_CreateRGBSurface(0, width, height, 32, 0, 0, 0, 255);
+    SDL_SetSurfaceBlendMode(surface, SDL_BLENDMODE_ADD);
 
-    Uint32 colorkey = SDL_MapRGB(surface->format, 0x0, 0x0, 0x0);
-    SDL_SetColorKey(surface, SDL_TRUE, colorkey);
+    //Uint32 colorkey = SDL_MapRGB(surface->format, 0x0, 0x0, 0x0);
+    //SDL_SetColorKey(surface, SDL_TRUE, colorkey);
 
     return surface;
 }

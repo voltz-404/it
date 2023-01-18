@@ -16,7 +16,7 @@ Buffer::Buffer()
     m_file_saved = true;
 }
 
-Buffer::Buffer(const std::string filename)
+Buffer::Buffer(const std::string& filename)
 {
 	m_filename = filename;
 	m_buffer = { "" };
@@ -28,7 +28,7 @@ Buffer::Buffer(const std::string filename)
 	    openFile(filename);
 }
 
-void Buffer::openFile(const std::string filename)
+void Buffer::openFile(const std::string& filename)
 {
     if (filename.size() < 1) return;
 
@@ -84,7 +84,7 @@ void Buffer::deleteAt(const size_t row, const size_t col)
     m_file_saved = false;
 }
 
-void Buffer::append(const size_t row, const size_t col, const std::string& str)
+void Buffer::append(const size_t row, const size_t col, const std::string_view& str)
 {
     if (m_buffer.size() != 0)
     {
@@ -109,7 +109,7 @@ void Buffer::appendNewLine(const size_t col, const size_t row)
     }
     else
     {
-        m_buffer.insert(m_buffer.begin() + col, "\n");
+        m_buffer.insert(m_buffer.begin() + col, "");
     }
 
     //if (row > 1)
@@ -132,7 +132,7 @@ size_t Buffer::getLineSize(const size_t col)
 void Buffer::saveBuffer()
 {
     std::stringstream file_content;
-    for (const std::string& line : m_buffer)
+    for (const std::string_view& line : m_buffer)
         file_content << line << "\n";
 
     // If files has no name as for one
@@ -171,13 +171,14 @@ SDL_Texture* renderLine(const std::string& line, int x, int y, Theme theme)
     if (line.size() < 1) return nullptr;
     std::vector<Token> tokens = parser(line);
 
-    std::vector<std::string> keywords = { "int", "string", "return", "void", "char", "uint_32", "if", "else", "while", "for" ,"switch", "include", "const", "def", "import" };
+    const std::vector<std::string> keywords = { "int", "string", "return", "void", "char", "uint_32", "if", "else", "while", "for" ,"switch", "include", "const", "def", "import" };
 
     int line_w = 0, line_h = 0;
     TTF_SizeText(Editor::getFont(), line.c_str(), &line_w, &line_h);
 
     line_w += 3;
 
+    // Surface with alocated space to fit all words in their respective colors
     SDL_Surface* text_surface = makeSurface(line_w, line_h);
 
     int text_surface_pos = 0;
@@ -209,12 +210,12 @@ SDL_Texture* renderLine(const std::string& line, int x, int y, Theme theme)
             color = theme.string_;
         }
 
-
         if (!string_start && token.str == "\"")
         {
             color = theme.string_;
         }
 
+        // Add Word on text_surface
         SDL_Surface* surface = makeTextSuface(token.str, color);
         appendTextToSurface(surface, text_surface, text_surface_pos);
         text_surface_pos += surface->w;

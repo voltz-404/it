@@ -4,7 +4,7 @@
 
 #include "internal.h"
 
-Cursor::Cursor(int width, int height, int max_row, int max_col)
+Cursor::Cursor(int width, int height, size_t max_row, size_t max_col)
 {
 	m_max_col = max_col;
 	m_max_row = max_row;
@@ -64,12 +64,12 @@ void Cursor::moveRight(size_t line_max_row)
 	}
 }
 
-int Cursor::row()
+size_t Cursor::row()
 {
 	return m_row;
 }
 
-int Cursor::col()
+size_t Cursor::col()
 {
 	return m_col;
 }
@@ -84,7 +84,7 @@ int Cursor::y()
 	return m_y;
 }
 
-void Cursor::move(int row, int col)
+void Cursor::move(size_t row, size_t col)
 {
 	if (row > 0)
 	{
@@ -96,9 +96,6 @@ void Cursor::move(int row, int col)
 	{
 		m_col = col;
 		m_y = 0;
-
-		//if (col < Editor::getScreenCols())
-		//	m_y = (col - 1) * m_height;
 	}
 }
 
