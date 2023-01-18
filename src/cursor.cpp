@@ -55,7 +55,7 @@ void Cursor::moveLeft()
 
 void Cursor::moveRight(size_t line_max_row)
 {
-	if (m_row < line_max_row + 1)
+	if (m_row - 1 < line_max_row)
 	{
 		m_row += 1;
 

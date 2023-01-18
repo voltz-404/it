@@ -13,7 +13,7 @@ Buffer::Buffer()
     m_buffer = { "" };
     m_textures = { nullptr };
     m_redraw = true;
-    m_file_saved = true;
+    m_file_saved = false;
 }
 
 Buffer::Buffer(const std::string& filename)
@@ -22,7 +22,7 @@ Buffer::Buffer(const std::string& filename)
 	m_buffer = { "" };
     m_textures = { nullptr };
     m_redraw = true;
-    m_file_saved = true;
+    m_file_saved = false;
 
     if (filename.size() != 0)
 	    openFile(filename);
@@ -52,6 +52,7 @@ void Buffer::openFile(const std::string& filename)
         }
 
         m_filename = filename;
+        m_file_saved = true;
     }
     else
     {
@@ -99,13 +100,12 @@ void Buffer::append(const size_t row, const size_t col, const std::string_view& 
 
 void Buffer::appendNewLine(const size_t col, const size_t row)
 {
-    if (m_buffer.size() >= 1 && m_buffer[col - 1 ][row - 1] != '\n')
+    if (m_buffer.size() >= 1 && m_buffer[col - 1 ].size() > row - 1)
     {
         std::string new_line = m_buffer.at(col - 1).substr(row - 1);
-        //m_buffer.at(col - 1).insert(row - 1, "\n");
         m_buffer.at(col - 1).erase(row - 1);
 
-        m_buffer.insert(m_buffer.begin() + (col), new_line);
+        m_buffer.insert(m_buffer.begin() + col, new_line);
     }
     else
     {
@@ -133,7 +133,9 @@ void Buffer::saveBuffer()
 {
     std::stringstream file_content;
     for (const std::string_view& line : m_buffer)
-        file_content << line << "\n";
+    {
+        file_content << line << '\n';
+    }
 
     // If files has no name as for one
     if (m_filename.size() == 0)
@@ -145,6 +147,11 @@ void Buffer::saveBuffer()
         file << file_content.str();
         m_file_saved = true;
     }
+}
+
+std::string Buffer::getFilename()
+{
+    return m_filename;
 }
 
 void Buffer::redraw()

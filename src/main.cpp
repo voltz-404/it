@@ -165,6 +165,11 @@ int main(int argc, char** argv)
             {
                 cursor.move(1, 0);
             }
+            else if (ctrlKey(event, SDLK_LEFTBRACKET))
+            {
+                buffer.append(0, cursor.col() - 1, "    ");
+                cursor.move(cursor.row() + 4, 0);
+            }
 
             if(event.type == SDL_KEYDOWN)
             {
@@ -172,9 +177,6 @@ int main(int argc, char** argv)
                 {
                     case SDLK_F4:
                         goto_ = !goto_;
-                        /*cursor.move(0, 5);
-                        printf("%d\n", cursor.col());
-                        buffer.redraw();*/
                     break;
                     case SDLK_END:
                         cursor.move(buffer.getLineSize(cursor.col() - 1) + 1, 0);
@@ -312,8 +314,8 @@ int main(int argc, char** argv)
             }
             else
             {
-                const std::string file_saved = !buffer.fileSaved() ? "(!)" : "(saved)";
-                drawText("file: " + filename + file_saved, 0, Editor::getScreenHeight() - cursor_h, 0xfb4934);
+                const std::string file_saved = !buffer.fileSaved() ? "(!)" : "";
+                drawText("file: " + buffer.getFilename() + file_saved, 0, Editor::getScreenHeight() - cursor_h, 0xfb4934);
             }
         }
 

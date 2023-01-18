@@ -32,6 +32,8 @@ public:
 
 	void saveBuffer();
 
+	std::string getFilename();
+
 	void redraw();
 
 	size_t size();
