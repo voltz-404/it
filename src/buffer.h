@@ -22,13 +22,17 @@ public:
 
 	void deleteLine(const size_t col);
 
-	void deleteAt(const size_t row, const size_t col);
+	void deleteChars(const size_t row, const size_t col, const size_t count = 1);
+
+	void deleteAt(const size_t row, const size_t col, const size_t count = 1);
 
 	void append(const size_t row, const size_t col, const std::string_view& str);
 
 	void appendNewLine(const size_t col, const size_t row);
 
 	size_t getLineSize(const size_t col);
+
+	std::string getLine(const size_t col);
 
 	void saveBuffer();
 

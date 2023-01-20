@@ -78,11 +78,11 @@ void Buffer::deleteLine(const size_t col)
     m_redraw = true;
 }
 
-void Buffer::deleteAt(const size_t row, const size_t col)
+void Buffer::deleteAt(const size_t row, const size_t col, const size_t count)
 {
     if (m_buffer.size() >= 1 && row > 1)
     {
-        m_buffer[col - 1].erase(row - 2, 1);
+        m_buffer[col - 1].erase(row - 2, count);
     }
     else if (col > 1)
     {
@@ -92,6 +92,11 @@ void Buffer::deleteAt(const size_t row, const size_t col)
 
     m_redraw = true;
     m_file_saved = false;
+}
+
+void Buffer::deleteChars(const size_t row, const size_t col, const size_t count)
+{
+    m_buffer[col].erase(row, count);
 }
 
 void Buffer::append(const size_t row, const size_t col, const std::string_view& str)
@@ -136,6 +141,11 @@ void Buffer::appendNewLine(const size_t col, const size_t row)
 size_t Buffer::getLineSize(const size_t col)
 {
     return m_buffer[col].size();
+}
+
+std::string Buffer::getLine(const size_t col)
+{
+    return m_buffer[col - 1];
 }
 
 void Buffer::saveBuffer()

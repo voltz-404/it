@@ -13,7 +13,7 @@
 #define SCREEN_WIDTH 1080
 #define SCREEN_HEIGHT 720
 
-bool ctrlKey(SDL_Event& event, SDL_Keycode key)
+bool ctrlKey(const SDL_Event& event, SDL_Keycode key)
 {
     static bool ctrl_key = false;
 
@@ -31,6 +31,78 @@ bool ctrlKey(SDL_Event& event, SDL_Keycode key)
 
     return false;
 }
+
+bool isKeyDown(SDL_Scancode key)
+{
+    return SDL_GetKeyboardState(nullptr)[key];
+}
+
+bool isKeyDown(const SDL_Event& event, SDL_KeyCode key)
+{
+    return (event.type == SDL_KEYDOWN && event.key.keysym.sym == key);
+}
+
+bool isKeyUp(const SDL_Event& event, SDL_KeyCode key)
+{
+    return (event.type == SDL_KEYUP && event.key.keysym.sym == key);
+}
+
+struct Selection
+{
+    int start_x;
+    int start_y;
+
+    int end_x;
+    int end_y;
+    
+    int start_row;
+    int end_row;
+    int start_col;
+    int end_col; // not implemented
+
+    //bool hotkey_up;
+    bool is_selecting;
+    bool is_delete;
+
+    void update(const SDL_Event& event, Cursor& cursor)
+    {
+        // If any key is pressed besides Ctrl-right cancels the selection
+        if (event.type == SDL_KEYDOWN && !ctrlKey(event, SDLK_RIGHT) && is_selecting)
+        {
+            if (isKeyDown(SDL_SCANCODE_BACKSPACE))
+            {
+                is_delete = true;
+            }
+            is_selecting = false;
+        }
+
+        if (ctrlKey(event, SDLK_RIGHT))
+        {
+            if (!is_selecting)
+            {
+                start_row = end_row = cursor.row() - 1;
+                start_col = end_col = cursor.col();
+
+                start_x = cursor.x();
+                start_y = cursor.y();
+
+                is_selecting = true;
+            }
+
+            end_row += 1;
+
+            end_x = cursor.x();
+            end_y = cursor.y();
+        }
+    }
+
+    void draw(const int cursor_w, const int cursor_h)
+    {
+        SDL_Rect rect = { start_x, start_y, (end_row - start_row) * cursor_w, cursor_h };
+        SDL_SetRenderDrawColor(Editor::getRenderer(), 0xff, 0xff, 0xff, 0x30);
+        SDL_RenderFillRect(Editor::getRenderer(), &rect);
+    }
+};
 
 int main(int argc, char** argv)
 {
@@ -83,7 +155,12 @@ int main(int argc, char** argv)
     std::stringstream goto_line;
     bool goto_ = false;
 
+    Selection select = { 0 };
+    select.is_selecting = false;
+    select.is_delete = false;
+
     bool done = false;
+    SDL_StartTextInput();
     while (!done)
     {
         SDL_Event event;
@@ -136,7 +213,7 @@ int main(int argc, char** argv)
             }
             if (event.type == SDL_TEXTEDITING)
             {
-                // printf("%s\n", event.text.text);
+                //printf("start: %d\n", event.edit.start);
             }
 
             if (ctrlKey(event, SDLK_g))
@@ -176,6 +253,19 @@ int main(int argc, char** argv)
                 cursor.move(1, 0);
                 if (cursor.col() > buffer.size())
                     cursor.moveUp();
+            }
+            else if (ctrlKey(event, SDLK_v))
+            {
+                std::string clipboard = SDL_GetClipboardText();
+                buffer.append(cursor.row() - 1, cursor.col() - 1, clipboard);
+                cursor.move(cursor.row() + clipboard.size(), 0);
+            }
+
+
+            // Selection
+            if (select.end_row < buffer.getLineSize(cursor.col() - 1))
+            {
+                select.update(event, cursor);
             }
 
             if (event.type == SDL_MOUSEWHEEL)
@@ -280,20 +370,29 @@ int main(int argc, char** argv)
                     break;
                     case SDLK_BACKSPACE:
                     {
-                        // move cursor to end of the above line when delete from row = 1
-                        size_t cursor_row = cursor.row();
-                        if (cursor.col() > 1)
-                            cursor_row = buffer.getLineSize(cursor.col() - 2) + 2;
-
-                        buffer.deleteAt(cursor.row(), cursor.col());
-
-                        if (buffer.size() >= 1 && cursor.row() == 1 && cursor.col() > 1)
+                        if (select.is_delete == false)
                         {
-                            cursor.moveUp();
-                            cursor.move(cursor_row, 0);
-                        }
+                            // move cursor to end of the above line when delete from row = 1
+                            size_t cursor_row = cursor.row();
+                            if (cursor.col() > 1)
+                                cursor_row = buffer.getLineSize(cursor.col() - 2) + 2;
 
-                        cursor.moveLeft();
+                            buffer.deleteAt(cursor.row(), cursor.col());
+
+                            if (buffer.size() >= 1 && cursor.row() == 1 && cursor.col() > 1)
+                            {
+                                cursor.moveUp();
+                                cursor.move(cursor_row, 0);
+                            }
+
+                            cursor.moveLeft();
+                        }
+                        else
+                        {
+                            buffer.deleteAt(select.start_row + 2, select.start_col, select.end_row - select.start_row);
+                            cursor.move(select.start_row + 1, 0);
+                            select.is_delete = false;
+                        }
                     }
                         break;
                     case SDLK_LEFT:
@@ -324,6 +423,18 @@ int main(int argc, char** argv)
             buffer.draw(begin_offset, end_offset, cursor.col(), cursor_col_offset, cursor.y(), screen_max_cols, theme);
         }
 
+        if (select.is_selecting)
+        {
+            select.draw(cursor_w, cursor_h);
+        }
+
+        //if (is_selected)
+        //{
+        //    SDL_Rect rect = { (start_row - 1) * cursor_w, cursor.y(), cursor_w * selection, cursor_h};
+        //    SDL_SetRenderDrawColor(Editor::getRenderer(), 0xff, 0xff, 0xff, 0x30);
+        //    SDL_RenderFillRect(Editor::getRenderer(), &rect);
+        //}
+
         // Status bar
         {
             // TODO: unsigned char takes 2 bytes space, messing up with cursor_row accuracy and out of bounds cursor_row position
@@ -351,6 +462,7 @@ int main(int argc, char** argv)
         SDL_RenderPresent(Editor::getRenderer());
     }
 
+    SDL_StopTextInput();
     // Cleanup
     TTF_CloseFont(Editor::getFont());
     SDL_DestroyRenderer(Editor::getRenderer());
