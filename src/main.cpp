@@ -13,23 +13,9 @@
 #define SCREEN_WIDTH 1080
 #define SCREEN_HEIGHT 720
 
-bool ctrlKey(const SDL_Event& event, SDL_Keycode key)
+bool ctrlKey(const SDL_Event& event, SDL_Scancode key)
 {
-    static bool ctrl_key = false;
-
-    if (event.type == SDL_KEYDOWN)
-    {
-        if (event.key.keysym.sym == SDLK_LCTRL)
-            ctrl_key = true;
-
-        return (ctrl_key && event.key.keysym.sym == key);
-    }
-    else if (event.type == SDL_KEYUP && event.key.keysym.sym == SDLK_LCTRL)
-    {
-        ctrl_key = false;
-    }
-
-    return false;
+    return Editor::isKeyDown(SDL_SCANCODE_LCTRL) && Editor::isKeyDown(key);
 }
 
 bool isKeyDown(SDL_Scancode key)
@@ -64,10 +50,10 @@ struct Selection
     bool is_selecting;
     bool is_delete;
 
-    void update(const SDL_Event& event, Cursor& cursor)
+    void update(const SDL_Event& event, Cursor& cursor, const size_t line_size)
     {
         // If any key is pressed besides Ctrl-right cancels the selection
-        if (event.type == SDL_KEYDOWN && !ctrlKey(event, SDLK_RIGHT) && is_selecting)
+        if (!(Editor::isKeyDown(SDL_SCANCODE_LSHIFT) && Editor::isKeyDown(SDL_SCANCODE_RIGHT)) && is_selecting)
         {
             if (isKeyDown(SDL_SCANCODE_BACKSPACE))
             {
@@ -76,7 +62,7 @@ struct Selection
             is_selecting = false;
         }
 
-        if (ctrlKey(event, SDLK_RIGHT))
+        if (Editor::isKeyDown(SDL_SCANCODE_LSHIFT) && Editor::isKeyDown(SDL_SCANCODE_RIGHT))
         {
             if (!is_selecting)
             {
@@ -89,7 +75,8 @@ struct Selection
                 is_selecting = true;
             }
 
-            end_row += 1;
+            if (end_row < line_size)
+                end_row += 1;
 
             end_x = cursor.x();
             end_y = cursor.y();
@@ -211,61 +198,10 @@ int main(int argc, char** argv)
                     cursor.moveRight(buffer.getLineSize(cursor.col() - 1));
                 }
             }
+
             if (event.type == SDL_TEXTEDITING)
             {
                 //printf("start: %d\n", event.edit.start);
-            }
-
-            if (ctrlKey(event, SDLK_g))
-            {
-                goto_ = !goto_;
-            }
-            else if (ctrlKey(event, SDLK_o))
-            {
-                std::string temp_filename = getOpenFileName();
-                if (temp_filename.size() > 0)
-                {
-                    filename = temp_filename;
-                    cursor.move(1, 1);
-                    buffer.openFile(filename);
-                }
-            }
-            else if (ctrlKey(event, SDLK_s))
-            {
-                buffer.saveBuffer();
-            }
-            else if (ctrlKey(event, SDLK_l))
-            {
-                cursor.move(buffer.getLineSize(cursor.col() - 1) + 1, 0);
-            }
-            else if (ctrlKey(event, SDLK_j))
-            {
-                cursor.move(1, 0);
-            }
-            else if (ctrlKey(event, SDLK_LEFTBRACKET))
-            {
-                buffer.append(0, cursor.col() - 1, "    ");
-                cursor.move(cursor.row() + 4, 0);
-            }
-            else if (ctrlKey(event, SDLK_x))
-            {
-                buffer.deleteLine(cursor.col());
-                cursor.move(1, 0);
-                if (cursor.col() > buffer.size())
-                    cursor.moveUp();
-            }
-            else if (ctrlKey(event, SDLK_v))
-            {
-                std::string clipboard = SDL_GetClipboardText();
-                buffer.append(cursor.row() - 1, cursor.col() - 1, clipboard);
-                cursor.move(cursor.row() + clipboard.size(), 0);
-            }
-
-
-            // Selection
-            if (select.end_row < buffer.getLineSize(cursor.col() - 1))
-            {
-                select.update(event, cursor);
             }
 
             if (event.type == SDL_MOUSEWHEEL)
@@ -286,8 +222,61 @@ int main(int argc, char** argv)
 
             }
 
-            if(event.type == SDL_KEYDOWN)
+            if (event.type == SDL_KEYDOWN)
             {
+                if (ctrlKey(event, SDL_SCANCODE_G))
+                {
+                    goto_ = !goto_;
+                }
+                else if (ctrlKey(event, SDL_SCANCODE_O))
+                {
+                    std::string temp_filename = getOpenFileName();
+                    if (temp_filename.size() > 0)
+                    {
+                        filename = temp_filename;
+                        cursor.move(1, 1);
+                        buffer.openFile(filename);
+                    }
+                }
+                else if (ctrlKey(event, SDL_SCANCODE_S))
+                {
+                    buffer.saveBuffer();
+                }
+                else if (ctrlKey(event, SDL_SCANCODE_L))
+                {
+                    cursor.move(buffer.getLineSize(cursor.col() - 1) + 1, 0);
+                }
+                else if (ctrlKey(event, SDL_SCANCODE_J))
+                {
+                    cursor.move(1, 0);
+                }
+                else if (ctrlKey(event, SDL_SCANCODE_LEFTBRACKET))
+                {
+                    buffer.append(0, cursor.col() - 1, "    ");
+                    cursor.move(cursor.row() + 4, 0);
+                }
+                else if (ctrlKey(event, SDL_SCANCODE_X))
+                {
+                    buffer.deleteLine(cursor.col());
+                    cursor.move(1, 0);
+                    if (cursor.col() > buffer.size())
+                        cursor.moveUp();
+                }
+                else if (ctrlKey(event, SDL_SCANCODE_V))
+                {
+                    std::string clipboard = SDL_GetClipboardText();
+                    buffer.append(cursor.row() - 1, cursor.col() - 1, clipboard);
+                    cursor.move(cursor.row() + clipboard.size(), 0);
+                }
+
+                // Selection
+                select.update(event, cursor, buffer.getLineSize(cursor.col() - 1));
+
+                //if (Editor::isKeyDown(SDL_SCANCODE_A))
+                //{
+                //    puts("A is pressed");
+                //}
+
                 switch(event.key.keysym.sym)
                 {
 
@@ -389,7 +378,7 @@ int main(int argc, char** argv)
                         }
                         else
                         {
-                            buffer.deleteAt(select.start_row + 2, select.start_col, select.end_row - select.start_row);
+                            buffer.deleteAt(select.start_row + 2, select.start_col, (size_t)(select.end_row - select.start_row));
                             cursor.move(select.start_row + 1, 0);
                             select.is_delete = false;
                         }

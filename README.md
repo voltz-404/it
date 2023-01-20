@@ -3,7 +3,7 @@
 ### Usage:
 >From source code:
 >```
->$ git clone (link) it
+>$ git clone https://github.com/voltz-404/it.git it
 >$ cd it
 >$ mkdir build
 >$ cd build
@@ -14,7 +14,7 @@
 
 >From pre-built binaries:
 >
->Choose and [Download](link) a version
+>Choose and [Download](https://github.com/voltz-404/it/releases) a version
 
 #### Shortcuts
 * Ctrl-O Open file

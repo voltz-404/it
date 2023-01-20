@@ -9,6 +9,8 @@ Editor::Editor()
 	m_font = nullptr;
 	m_screen_width = 1080;
 	m_screen_height = 720;
+
+	keys = SDL_GetKeyboardState(nullptr);
 }
 
 Editor* Editor::get()
@@ -82,4 +84,9 @@ int Editor::getScreenRows()
 	int glyph_width = 0;
 	TTF_SizeText(Editor::getFont(), "A", &glyph_width, nullptr);
 	return get()->m_screen_width / glyph_width;
+}
+
+bool Editor::isKeyDown(SDL_Scancode key)
+{
+	return get()->keys[key];
 }

@@ -22,6 +22,8 @@ public:
 		
 	static int getScreenRows();
 
+	static bool isKeyDown(SDL_Scancode key);
+
 private:
 	Editor();
 	Editor(Editor& other) = delete;
@@ -33,4 +35,6 @@ private:
 	TTF_Font* m_font;
 	int m_screen_width;
 	int m_screen_height;
+
+	const Uint8* keys;
 };
