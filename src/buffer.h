@@ -30,6 +30,8 @@ public:
 
 	void appendNewLine(const size_t col, const size_t row);
 
+	void appendLine(const size_t col, const char* line);
+
 	size_t getLineSize(const size_t col);
 
 	std::string getLine(const size_t col);

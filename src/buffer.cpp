@@ -57,9 +57,13 @@ void Buffer::openFile(const std::string& filename)
     else
     {
         m_buffer = { "" };
+        m_filename = "";
+        m_file_saved = false;
         printf("Error: %s\n", strerror(errno));
         printf("Could not open the file: %s\n", filename.c_str());
     }
+
+    file.close();
 
     m_redraw = true;
 }
@@ -141,6 +145,12 @@ void Buffer::appendNewLine(const size_t col, const size_t row)
 size_t Buffer::getLineSize(const size_t col)
 {
     return m_buffer[col].size();
+}
+
+void Buffer::appendLine(const size_t col, const char* line)
+{
+    m_buffer.insert(m_buffer.begin() + col, line);
+    redraw();
 }
 
 std::string Buffer::getLine(const size_t col)
@@ -277,7 +287,7 @@ void Buffer::draw(size_t& begin_offset, size_t& end_offset, size_t col, size_t c
 
         m_textures.clear();
 
-        for (size_t i = begin_offset, j = 0; i < end_offset && i < m_buffer.size(); i++, j++)
+        for (int i = begin_offset, j = 0; i < end_offset && i < m_buffer.size(); i++, j++)
         {
             SDL_Texture* texture = renderLine(m_buffer[i], 0, j * glyph_height, theme);
             m_textures.push_back(texture);

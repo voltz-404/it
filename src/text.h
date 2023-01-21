@@ -23,40 +23,40 @@ void drawText(SDL_Texture* texture, SDL_Rect rect);
 
 enum ColorMask
 {
-	BLUE,
-	GREEN = 8,
-	RED   = 16
+    BLUE,
+    GREEN = 8,
+    RED   = 16
 };
 
 class Text
 {
 public:
-	Text(const std::string& text, int x, int y, uint32_t color);
-	Text(int x, int y);
-	~Text();
-	
-	void reserveSurface(const int width, const int height);
+    Text(const std::string& text, int x, int y, uint32_t color);
+    Text(int x, int y);
+    ~Text();
+    
+    void reserveSurface(const int width, const int height);
 
-	void makeTexture();
+    void makeTexture();
 
-	void append(const std::string& text, const uint32_t color);
+    void append(const std::string& text, const uint32_t color);
 
-	SDL_Rect getRect();
+    SDL_Rect getRect();
 
-	SDL_Surface* getSurface();
+    SDL_Surface* getSurface();
 
-	SDL_Texture* getTexture();
+    SDL_Texture* getTexture();
 
-	void draw();
+    void draw();
 
 private:
-	SDL_Surface* m_surface;
-	SDL_Texture* m_texture;
-	SDL_Rect m_rect;
-	int m_x;
-	int m_y;
-	int m_append_width;
-	std::string m_text;
-	uint32_t m_color;
-	TTF_Font* m_font;
+    SDL_Surface* m_surface;
+    SDL_Texture* m_texture;
+    SDL_Rect m_rect;
+    int m_x;
+    int m_y;
+    int m_append_width;
+    std::string m_text;
+    uint32_t m_color;
+    TTF_Font* m_font;
 };

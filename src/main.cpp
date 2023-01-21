@@ -113,11 +113,6 @@ int main(int argc, char** argv)
 
     SDL_RenderSetLogicalSize(Editor::getRenderer(), SCREEN_WIDTH, SCREEN_HEIGHT);
 
-    // Pybind11
-    // pybind11::scoped_interpreter guard{};
-    // pybind11::exec(R"(print("Hello world"))");
-    // ------------------------------------------------
-    //
 
     Theme theme;
     theme.keyword = 0x689d6a;
@@ -224,6 +219,11 @@ int main(int argc, char** argv)
 
             if (event.type == SDL_KEYDOWN)
             {
+                if (ctrlKey(event, SDL_SCANCODE_D))
+                {
+                    buffer.appendLine(cursor.col(), buffer.getLine(cursor.col()).c_str());
+                    cursor.moveDown(buffer.size());
+                }
                 if (ctrlKey(event, SDL_SCANCODE_G))
                 {
                     goto_ = !goto_;
@@ -345,9 +345,10 @@ int main(int argc, char** argv)
                     {
                         size_t cursor_row_pos = cursor.row();
 
-                        /// TODO: if buffer is scrolled down, this will be true, fix it
-                        if (cursor.col() > screen_max_cols - 1)
+                        if (cursor.col() > screen_max_cols - 1 && cursor.y() + cursor_h >= Editor::getScreenCols() * cursor_h)
+                        {
                             buffer.redraw();
+                        }
 
                         cursor.moveDown(buffer.size());
 
