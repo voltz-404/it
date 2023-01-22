@@ -90,3 +90,8 @@ bool Editor::isKeyDown(SDL_Scancode key)
 {
     return get()->keys[key];
 }
+
+bool ctrlKey(SDL_Scancode key)
+{
+    return Editor::isKeyDown(SDL_SCANCODE_LCTRL) && Editor::isKeyDown(key);
+}

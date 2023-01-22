@@ -38,3 +38,5 @@ private:
 
     const Uint8* keys;
 };
+
+bool ctrlKey(SDL_Scancode key);

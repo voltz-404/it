@@ -11,6 +11,26 @@
 
 #include "parser.h"
 
+#include "cursor.h"
+
+class Selection
+{
+public:
+	int start_row;
+	int end_row;
+
+	int start_y;
+
+	int start_col;
+	int end_col; // not implemented
+
+	void startSelection(Cursor& cursor);
+
+	bool hasSelection();
+
+	void draw();
+};
+
 class Buffer
 {
 public:
@@ -44,16 +64,25 @@ public:
 
 	size_t size();
 
+	void update(SDL_Event event);
+
 	bool fileSaved();
 
-	~Buffer();
+	int getCursorRow();
 
-	void draw(size_t& begin_offset, size_t& end_offset, size_t col, size_t col_offset, size_t cursor_y, size_t max_cols, Theme theme);
+	int getCursorCol();
+
+	void keyHandler(SDL_Keycode key);
+
+	void draw(size_t& begin_offset, size_t& end_offset, Theme theme);
 
 private:
 	std::string m_filename;
 	std::vector <std::string> m_buffer;
 	std::vector <SDL_Texture*> m_textures;
+
+	Cursor m_cursor;
+	Selection m_selection;
 
 	bool m_redraw;
 	bool m_file_saved;

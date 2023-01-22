@@ -3,17 +3,20 @@
 #include <stdio.h>
 
 #include "internal.h"
+#include "buffer.h"
 
-Cursor::Cursor(int width, int height, size_t max_row, size_t max_col)
+Cursor::Cursor()
 {
-    m_max_col = max_col;
-    m_max_row = max_row;
+    m_max_col = Editor::getScreenCols();
+    m_max_row = Editor::getScreenRows();
     m_row = 1;
     m_col = 1;
     m_x = 0;
     m_y = 0;
-    m_width = width;
-    m_height = height;
+    m_width = 0;
+    m_height = 0;
+
+    TTF_SizeText(Editor::getFont(), "_", &m_width, &m_height);
 }
 
 void Cursor::moveDown(size_t buffer_max_col)
@@ -84,6 +87,16 @@ int Cursor::y()
     return m_y;
 }
 
+int Cursor::width()
+{
+    return m_width;
+}
+
+int Cursor::height()
+{
+    return m_height;
+}
+
 void Cursor::move(size_t row, size_t col)
 {
     if (row > 0)
@@ -99,12 +112,17 @@ void Cursor::move(size_t row, size_t col)
     }
 }
 
+void Cursor::update(Buffer buffer)
+{
+}
+
 void Cursor::draw()
 {
     SDL_Color cursor_color = { 0xFF, 0xB4, 0x54, 0xFF };
     SDL_Rect cursor_rect = { m_x, m_y, m_width, m_height };
     SDL_SetRenderDrawColor(Editor::getRenderer(), cursor_color.r, cursor_color.g, cursor_color.b, 0xff);
     SDL_RenderDrawLine(Editor::getRenderer(), m_x, m_y, m_x, m_y + m_height);
+    //SDL_RenderFillRect(Editor::getRenderer(), &cursor_rect);
 }
 
 

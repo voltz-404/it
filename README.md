@@ -23,4 +23,5 @@
 * Ctrl-L Go to end of the line
 * Ctrl-J Go to beggining of the line
 * Ctrl-X Delete line under cursor
+* Ctrl-D Duplicate line under cursor
 * Ctrl-[ Add tab-space at the beggining of the line

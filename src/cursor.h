@@ -2,10 +2,12 @@
 
 #include <SDL.h>
 
+class Buffer;
+
 class Cursor
 {
 public:
-    Cursor(int width, int height, size_t max_row, size_t max_col);
+    Cursor();
 
     void moveDown(size_t buffer_max_col);
 
@@ -23,7 +25,13 @@ public:
 
     int y();
 
+    int width();
+
+    int height();
+
     void move(size_t row, size_t col);
+
+    void update(Buffer buffer);
 
     void draw();
 
