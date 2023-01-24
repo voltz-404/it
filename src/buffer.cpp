@@ -121,7 +121,7 @@ void Buffer::append(const size_t row, const size_t col, const std::string_view& 
     m_file_saved = false;
 }
 
-void Buffer::appendNewLine(const size_t col, const size_t row)
+void Buffer::appendNewLine(const size_t col, const size_t row, const int tabstop)
 {
     if (m_buffer.size() >= 1 && m_buffer[col - 1 ].size() > row - 1)
     {
@@ -134,6 +134,11 @@ void Buffer::appendNewLine(const size_t col, const size_t row)
     {
         m_buffer.insert(m_buffer.begin() + col, "");
     }
+
+    const std::string spaces(tabstop, ' ');
+
+    m_buffer[col].insert(0, spaces);
+
 
     //if (row > 1)
     //{
@@ -507,8 +512,14 @@ void Buffer::keyHandler(SDL_Keycode key)
     case SDLK_KP_ENTER:
     case SDLK_RETURN:
     {
-        appendNewLine(m_cursor.col(), m_cursor.row());
+        // indentation
+        int tabstop = 0;
+        for (; tabstop < m_buffer[m_cursor.col() - 1].size() && m_buffer[m_cursor.col() - 1][tabstop] == ' '; tabstop++);
+
+        appendNewLine(m_cursor.col(), m_cursor.row(), tabstop);
         m_cursor.moveDown(m_buffer.size());
+        // make cursor be in sync with indentation
+        m_cursor.move(m_cursor.row() + tabstop, 0);
     }
     break;
     case SDLK_BACKSPACE:

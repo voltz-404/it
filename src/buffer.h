@@ -48,7 +48,7 @@ public:
 
 	void append(const size_t row, const size_t col, const std::string_view& str);
 
-	void appendNewLine(const size_t col, const size_t row);
+	void appendNewLine(const size_t col, const size_t row, const int tabstop = 0);
 
 	void appendLine(const size_t col, const char* line);
 
