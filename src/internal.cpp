@@ -1,7 +1,5 @@
 #include "internal.h"
 
-#include <iostream>
-
 Editor::Editor()
 {
     m_renderer = nullptr;
@@ -20,7 +18,7 @@ Editor* Editor::get()
     if (editor == nullptr)
     {
         editor = new Editor();
-        editor->m_window = SDL_CreateWindow("Blaze", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,1080, 720, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+        editor->m_window = SDL_CreateWindow("IT Editor", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,1080, 720, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
         if (editor->m_window == nullptr)
         {
             std::cerr << "Couldn't create the window\n";
@@ -43,6 +41,8 @@ Editor* Editor::get()
 
             return nullptr;
         }
+
+        SDL_RenderSetLogicalSize(editor->m_renderer, 1080, 720);
     }
     return editor;
 }
@@ -54,6 +54,7 @@ SDL_Renderer* Editor::getRenderer()
 
 SDL_Window* Editor::getWindow()
 {
+    SDL_GetWindowSize(get()->m_window, &get()->m_screen_width, &get()->m_screen_height);
     return get()->m_window;
 }
 

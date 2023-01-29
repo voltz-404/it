@@ -1,9 +1,7 @@
 #include "platform.h"
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
-#include <windows.h>
 
-#include <SDL_syswm.h>
 #include "internal.h"
 
 std::string getSaveFileName()

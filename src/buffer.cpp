@@ -1,8 +1,5 @@
 #include "buffer.h"
 
-#include <stdio.h>
-#include <algorithm>
-
 #include "text.h"
 #include "platform.h"
 #include "internal.h"
@@ -464,6 +461,11 @@ int Buffer::getCursorCol()
     return m_cursor.col();
 }
 
+void Buffer::setCursorCol(const size_t col)
+{
+    m_cursor.move(1, col);
+}
+
 void Buffer::keyHandler(SDL_Keycode key)
 {
     switch (key)
@@ -574,8 +576,8 @@ void Selection::startSelection(Cursor& cursor)
 {
     if (!hasSelection())
     {
-        start_row = end_row = cursor.row();
-        start_col = end_col = cursor.col();
+        start_row = end_row = (int)cursor.row();
+        start_col = end_col = (int)cursor.col();
 
         start_y = cursor.y();
     }

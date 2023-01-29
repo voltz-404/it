@@ -1,13 +1,6 @@
 #pragma once
 
-#include <vector>
-#include <string>
-#include <sstream>
-#include <filesystem>
-#include <fstream>
-
-#include <SDL.h>
-#include <SDL_ttf.h>
+#include "pch.h"
 
 #include "parser.h"
 
@@ -71,6 +64,8 @@ public:
 	int getCursorRow();
 
 	int getCursorCol();
+
+	void setCursorCol(const size_t col);
 
 	void keyHandler(SDL_Keycode key);
 

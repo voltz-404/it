@@ -36,7 +36,9 @@ set(SRC
     src/platform.cpp
 )
 
-add_executable(${PROJECT_NAME} ${IMG_FILES} ${SRC})
+add_executable(${PROJECT_NAME} WIN32 ${SRC})
+target_precompile_headers(${PROJECT_NAME} PRIVATE "src/pch.h")
+
 
 set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)

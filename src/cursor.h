@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SDL.h>
+#include "pch.h"
 
 class Buffer;
 
@@ -36,8 +36,6 @@ public:
     void draw();
 
 private:
-    size_t m_max_col;
-    size_t m_max_row;
     size_t m_row;
     size_t m_col;
     int m_x;

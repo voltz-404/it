@@ -1,9 +1,6 @@
 #pragma once
 
-#include <string>
-
-#include <SDL.h>
-#include <SDL_ttf.h>
+#include "pch.h"
 
 SDL_Surface* makeTextSuface(const std::string& text, uint32_t color);
 

@@ -1,14 +1,10 @@
 #include "cursor.h"
 
-#include <stdio.h>
-
 #include "internal.h"
 #include "buffer.h"
 
 Cursor::Cursor()
 {
-    m_max_col = Editor::getScreenCols();
-    m_max_row = Editor::getScreenRows();
     m_row = 1;
     m_col = 1;
     m_x = 0;
@@ -28,7 +24,7 @@ void Cursor::moveDown(size_t buffer_max_col)
         m_x = 0;
         m_row = 1;
 
-        if (m_y < (m_max_col - 1) * m_height)
+        if (m_y < (Editor::getScreenCols() - 1) * m_height)
             m_y += m_height;
     }
 }
@@ -62,7 +58,7 @@ void Cursor::moveRight(size_t line_max_row)
     {
         m_row += 1;
 
-        if (m_row < m_max_row)
+        if (m_row < Editor::getScreenRows())
             m_x += m_width;
     }
 }

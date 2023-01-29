@@ -13,8 +13,49 @@
 #define SCREEN_WIDTH 1080
 #define SCREEN_HEIGHT 720
 
-int main(int argc, char** argv)
+struct LineBuffer
 {
+    std::string line;
+    bool is_toggle;
+
+    void pop()
+    {
+        line.pop_back();
+    }
+
+    void clear()
+    {
+        line.clear();
+    }
+
+    void append(const std::string& text)
+    {
+        line.append(text);
+    }
+
+    void toggle()
+    {
+        is_toggle = !is_toggle;
+    }
+
+    size_t get()
+    {
+        return std::stoi(line);
+    }
+};
+
+//#define DEBUG
+
+#if (defined(WIN32) || defined(_WIN32) || defined(__WIN32)) && !defined(__CYGWIN__) && !defined(DEBUG)
+int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)
+{
+    int argc = __argc;
+    char** argv = __argv;
+#else
+int main(int argc, char* argv[])
+{
+#endif
+
     std::string filename;
     if (argc > 1)
         filename = argv[1];
@@ -33,10 +74,8 @@ int main(int argc, char** argv)
         return -1;
     }
 
-    SDL_RenderSetLogicalSize(Editor::getRenderer(), SCREEN_WIDTH, SCREEN_HEIGHT);
 
-
-    Theme theme;
+    Theme theme = { 0 };
     theme.keyword = 0x689d6a;
     theme.symbols = 0xebdbb2;
     theme.numbers = 0xb16286;
@@ -52,6 +91,10 @@ int main(int argc, char** argv)
 
     std::stringstream goto_line;
     bool goto_ = false;
+
+    LineBuffer line_buff;
+    line_buff.is_toggle = false;
+    line_buff.line = "";
 
     bool done = false;
     SDL_StartTextInput();
@@ -73,12 +116,32 @@ int main(int argc, char** argv)
                     done = true;
             }
 
-
+            switch (event.type)
+            {
+                case SDL_WINDOWEVENT:
+                {
+                    switch (event.window.event)
+                    {
+                        case SDL_WINDOWEVENT_SIZE_CHANGED:
+                        {
+                            int screen_width = 0, screen_height = 0;
+                            SDL_GetWindowSize(Editor::getWindow(), &screen_width, &screen_height);
+                            SDL_RenderSetLogicalSize(Editor::getRenderer(), screen_width, screen_height);
+                            //puts("resized");
+                        }
+                        break;
+                        default: break;
+                    }
+                }
+                    break;
+                default: break;
+            }
             SDL_StartTextInput();
             if (event.type == SDL_TEXTINPUT)
             {
-                if (goto_)
+                if (line_buff.is_toggle)
                 {
+                    line_buff.append(event.text.text);
                     //goto_line << event.text.text[0];
                 }
             }
@@ -89,32 +152,36 @@ int main(int argc, char** argv)
             }
 
             // buffer
-            buffer.update(event);
+            if (!line_buff.is_toggle)
+                buffer.update(event);
 
             if (event.type == SDL_KEYDOWN)
             {
 
-                //if (ctrlKey(SDL_SCANCODE_G))
-                //{
-                //    goto_ = !goto_;
-                //}
+                if (ctrlKey(SDL_SCANCODE_G))
+                {
+                    line_buff.toggle();
+                }
 
                 switch(event.key.keysym.sym)
                 {
+                    case SDLK_BACKSPACE:
+                    {
+                        if (line_buff.is_toggle)
+                        {
+                            line_buff.pop();
+                        }
+                    };
                     case SDLK_KP_ENTER:
                     case SDLK_RETURN:
                     {
-                        if (goto_)
+                        if (line_buff.is_toggle)
                         {
-                            size_t line_num = 0;
-                            goto_line >> line_num;
-                            if (line_num > buffer.size())
-                                line_num = buffer.size();
+                            size_t line_num = line_buff.get();
+                            line_buff.toggle();
+                            line_buff.clear();
 
-                            goto_line.str("");
-                            goto_line.clear();
-                            goto_ = false;
-                           
+                            buffer.setCursorCol(line_num);
                             buffer.redraw();
                         }
                     }
@@ -145,9 +212,9 @@ int main(int argc, char** argv)
 
             drawText(status_line, Editor::getScreenWidth() - status_width, Editor::getScreenHeight() - cursor_h, 0xfb4934);
             
-            if (goto_)
+            if (line_buff.is_toggle)
             {
-                drawText("goto line: " + goto_line.str(), 0, SCREEN_HEIGHT - cursor_h, 0xfb4934);
+                drawText("goto line: " + line_buff.line, 0, Editor::getScreenHeight() - cursor_h, 0xfb4934);
             }
             else
             {

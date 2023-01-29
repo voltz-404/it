@@ -1,7 +1,6 @@
 #pragma once
-#include <string>
-#include <vector>
-#include <ctype.h>
+
+#include "pch.h"
 
 struct Theme
 {
